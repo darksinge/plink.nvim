@@ -24,8 +24,9 @@ end, 2)
 M.search = function(query)
   u.assert_type({ query }, 'string')
 
-  local run, timer = debounce(async.run, delay)
-  run(function()
+  local run_async, timer = debounce(async.run, delay)
+
+  run_async(function()
     search_async(query, function(plugins)
       return plugins
     end)
