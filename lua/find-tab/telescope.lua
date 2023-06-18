@@ -2,10 +2,8 @@ local pickers = require('telescope.pickers')
 local previewers = require('telescope.previewers')
 local finders = require('telescope.finders')
 local conf = require('telescope.config').values
-local entry_display = require('telescope.pickers.entry_display')
 local actions = require 'telescope.actions'
 local action_state = require 'telescope.actions.state'
-local strings = require('plenary.strings')
 local api = require('find-tab.api')
 
 local function format_entry_for_preview(bufnr, entry)

@@ -11,6 +11,7 @@ local M = {}
 ---@param query string
 ---@return {description: string, name: string, score: number, stars: number, tags: string[], url: string}[] | nil
 M.search = function(query)
+  query = string.gsub(query, ' ', '%%20')
   local res = curl.get({
     url = base_url .. '/search?q=' .. query,
   })
