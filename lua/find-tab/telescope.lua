@@ -98,5 +98,4 @@ local plugin_finder = function(opts)
   }):find()
 end
 
--- to execute the function
-plugin_finder()
+return plugin_finder

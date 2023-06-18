@@ -14,3 +14,4 @@ progress, as in "pre-alpha".
     thinks no...
 - auto install plugins on selection
 - allow sorting results by author, popularity, tags, etc.
+- cache results locally
