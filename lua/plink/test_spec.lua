@@ -1,6 +1,6 @@
 local putil = require('plenary.async.util')
 local async = require('plenary.async')
-local ft = require('find-tab')
+local ft = require('plink')
 
 async.run(function()
   ft.search('h')

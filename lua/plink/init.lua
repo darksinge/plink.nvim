@@ -1,11 +1,7 @@
 local async = require('plenary.async')
 local debounce = require('telescope.debounce').debounce_leading
-local api = require('find-tab.api')
-local u = require('find-tab.utils')
-
-local function p(v)
-  print(vim.inspect(v))
-end
+local api = require('plink.api')
+local u = require('plink.util')
 
 local M = {}
 
@@ -31,9 +27,6 @@ M.search = function(query)
   local run, timer = debounce(async.run, delay)
   run(function()
     search_async(query, function(plugins)
-      if plugins then
-        p(plugins[1])
-      end
       return plugins
     end)
   end, function()

@@ -4,7 +4,7 @@ local finders = require('telescope.finders')
 local conf = require('telescope.config').values
 local actions = require 'telescope.actions'
 local action_state = require 'telescope.actions.state'
-local api = require('find-tab.api')
+local api = require('plink.api')
 
 local function format_entry_for_preview(bufnr, entry)
   local desc = {}
