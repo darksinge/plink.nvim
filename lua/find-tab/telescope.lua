@@ -8,7 +8,7 @@ local action_state = require 'telescope.actions.state'
 local strings = require('plenary.strings')
 local api = require('find-tab.api')
 
-local function display_json(bufnr, entry)
+local function format_entry_for_preview(bufnr, entry)
   local desc = {}
   local i = 1
   while i <= #entry.description do
@@ -46,28 +46,13 @@ end
 
 local json_previewer = previewers.new_buffer_previewer({
   define_preview = function(self, entry, status)
-    display_json(self.state.bufnr, entry.value)
+    format_entry_for_preview(self.state.bufnr, entry.value)
   end
 })
 
 -- our picker function: colors
 local plugin_finder = function(opts)
   opts = opts or {}
-
-  local displayer = entry_display.create({
-    separator = " ",
-    items = {
-      { width = 30 },
-      { remaining = true }
-    },
-  })
-
-  local make_display = function(entry)
-    return displayer({
-      { entry.name, 'TelescopeResultsIdentifier' },
-      entry.description,
-    })
-  end
 
   local entry_maker = function(entry)
     if not entry or entry.name == nil then
