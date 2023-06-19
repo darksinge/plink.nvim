@@ -1,4 +1,4 @@
-# find-tab.nvim
+# plink.nvim
 
 ## Introduction
 
