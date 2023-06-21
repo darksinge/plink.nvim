@@ -11,12 +11,12 @@ local delay = 500
 local trace_name = '#plink'
 
 local search_async = async.wrap(function(query, callback)
-  callback(api.search(query))
+  callback(M.search(query))
 end, 2)
 
 ---@param query string
 ---@return nil
-M.search_async = function(query)
+M.search_async = function(query, callback)
   log.trace('search_async = ' .. query)
   if type(query) ~= 'string' then
     return nil
@@ -26,10 +26,14 @@ M.search_async = function(query)
 
   run_async(function()
     search_async(query, function(plugins)
+      if callback then
+        callback(plugins)
+      end
+
       return plugins
     end)
   end, function()
-    log('successfully fetched query "' .. query .. '"')
+    log.trace('successfully fetched query "' .. query .. '"')
     if timer then
       timer:stop()
     end
