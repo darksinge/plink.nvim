@@ -1,4 +1,4 @@
-# find-tab.nvim
+# plink.nvim
 
 ## Introduction
 
@@ -32,6 +32,8 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim)
 ```
 
 ## Usage
+
+This plugin has a backend component ([darksinge/plink-nvim-site](https://github.com/darksinge/plink-nvim-site)).
 
 ## TODOs
 
