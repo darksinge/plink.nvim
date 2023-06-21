@@ -46,7 +46,7 @@ M.search = function(query)
     api.search,
     {
       name = trace_name .. '.search("' .. query .. '")',
-      level = 'info',
+      level = 'trace',
     },
     query
   )

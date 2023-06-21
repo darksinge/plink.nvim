@@ -35,17 +35,22 @@ M.create = function(opts)
         opts.on_submit(value)
       end
     end,
+    on_change = function(value)
+      if opts.on_change then
+        opts.on_change(value)
+      end
+    end,
   })
 
-  local unmount = function()
-    input:unmount()
+  local hide = function()
+    input:hide()
   end
 
   local map_opts = { silent = true, noremap = true }
 
-  input:map('n', 'q', unmount, map_opts)
-  input:map('n', '<esc>', unmount, map_opts)
-  input:map('i', '<esc>', unmount, map_opts)
+  input:map('n', 'q', hide, map_opts)
+  input:map('n', '<esc>', hide, map_opts)
+  -- input:map('i', '<esc>', hide, map_opts)
 
   return input
 end
