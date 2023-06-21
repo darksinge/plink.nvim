@@ -7,6 +7,8 @@ A plugin to find more plugins.
 **WARNING:** This plugin (like all my side projects) is a massive work in
 progress, as in "pre-alpha".
 
+This plugin has a backend component ([darksinge/plink-nvim-site](https://github.com/darksinge/plink-nvim-site)).
+
 ## TODOs
 
 - add telescope extension
