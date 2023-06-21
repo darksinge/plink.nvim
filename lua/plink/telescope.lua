@@ -91,11 +91,9 @@ local plugin_finder = function(opts)
       return true
     end,
     previewer = json_previewer,
-    -- previewer = previewers.new({
-    --   preview_fn = function(entry, status)
-    --   end
-    -- }),
   }):find()
 end
+
+-- plugin_finder()
 
 return plugin_finder

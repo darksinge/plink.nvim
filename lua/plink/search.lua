@@ -1,15 +1,14 @@
 local async = require('plenary.async')
-local debounce = require('telescope.debounce').debounce_leading
+local debounce = require('telescope.debounce').debounce_trailing
 local api = require('plink.api')
--- local u = require('plink.util')
-local plugin_finder = require('plink.telescope')
-local log = require 'plink.log'
-
-vim.cmd([[sign define plink-search text= texthl=Pmenu]])
+local util = require('plink.util')
+local log = reload 'plink.log'
+-- local plugin_finder = require('plink.telescope')
 
 local M = {}
 
 local delay = 500
+local trace_name = '#plink'
 
 local search_async = async.wrap(function(query, callback)
   callback(api.search(query))
@@ -17,8 +16,8 @@ end, 2)
 
 ---@param query string
 ---@return nil
-local function search(query)
-  log('search = ' .. query)
+M.search_async = function(query)
+  log.trace('search_async = ' .. query)
   if type(query) ~= 'string' then
     return nil
   end
@@ -37,16 +36,16 @@ local function search(query)
   end)
 end
 
----@param opts { delay: number } | nil
-M.setup = function(opts)
-  opts = opts or {}
-  if opts.delay then
-    delay = opts.delay
-  end
-
-  vim.api.nvim_create_user_command('PlinkSearch', plugin_finder, { nargs = 0 })
+---@param query string
+M.search = function(query)
+  return util.time(
+    api.search,
+    {
+      name = trace_name .. '.search("' .. query .. '")',
+      level = 'info',
+    },
+    query
+  )
 end
-
-M.search = search
 
 return M
