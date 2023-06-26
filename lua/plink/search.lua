@@ -1,5 +1,4 @@
 local async = require('plenary.async')
-local debounce = require('telescope.debounce').debounce_trailing
 local api = require('plink.api')
 local util = require('plink.util')
 local log = reload 'plink.log'
@@ -14,6 +13,10 @@ local search_async = async.wrap(function(query, callback)
   callback(M.search(query))
 end, 2)
 
+local runner, timer = util.debounce(function(query, callback)
+  search_async(query, callback)
+end, delay)
+
 ---@param query string
 ---@return nil
 M.search_async = function(query, callback)
@@ -22,21 +25,11 @@ M.search_async = function(query, callback)
     return nil
   end
 
-  local run_async, timer = debounce(async.run, delay)
-
-  run_async(function()
-    search_async(query, function(plugins)
-      if callback then
-        callback(plugins)
-      end
-
-      return plugins
-    end)
-  end, function()
-    log.trace('successfully fetched query "' .. query .. '"')
-    if timer then
-      timer:stop()
-    end
+  runner(query, function(plugins)
+    local count = plugins and #plugins or 0
+    log.trace('query "' .. query .. '"' .. ' returned ' .. count .. ' results')
+    timer:stop()
+    callback(plugins)
   end)
 end
 

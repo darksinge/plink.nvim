@@ -1,4 +1,4 @@
-local Input = require("nui.input")
+local Input = require('nui.input')
 
 local prompt = " "
 
@@ -13,9 +13,9 @@ M.create = function(opts)
       width = "33%",
     },
     border = {
-      style = "single",
+      style = "rounded",
       text = {
-        top = "Search Plugins",
+        top = "Search",
         top_align = "center",
       },
     },

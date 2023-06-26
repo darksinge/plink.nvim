@@ -4,6 +4,8 @@ local search = require('plink.search')
 
 local M = {}
 
+vim.cmd([[sign define plink-search text= texthl=Pmenu]])
+
 ---@param opts { delay: number } | nil
 M.setup = function(opts)
   -- TODO: add setup
@@ -13,7 +15,6 @@ M.setup = function(opts)
   -- end
 
   -- TODO: Should this go in plugin/plink.lua?
-  vim.cmd([[sign define plink-search text= texthl=Pmenu]])
 end
 
 M.search = search.search
