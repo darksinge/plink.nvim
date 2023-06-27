@@ -39,7 +39,9 @@ M.time = function(fn, opts, ...)
   local result = fn(...)
   local stop = os.clock()
   local time = (stop - start)
-  logger(name .. ' time: ' .. time .. 's')
+  local ms = string.format("%.6f", time)
+  logger(name .. ' time: ' .. ms .. 'ms')
+  logger('result ..' .. vim.inspect(result))
 
   return result
 end

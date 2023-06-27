@@ -183,6 +183,21 @@ function SearchInput:toggle_placeholder()
   end
 end
 
+function SearchInput:start_spinner()
+  if not self.spinner:is_running() then
+    self.spinner:start()
+  end
+end
+
+function SearchInput:stop_spinner()
+  if self.spinner:is_running() then
+    self.spinner:stop()
+  end
+  vim.schedule(function()
+    self:display_input_suffix(nil)
+  end)
+end
+
 local function nvim_buf_del_extmark(bufnr, nsid, extid)
   return pcall(vim.api.nvim_buf_del_extmark, bufnr, nsid, extid)
 end
@@ -207,11 +222,7 @@ function SearchInput:display_input_suffix(suffix)
       virt_text_pos = "right_align",
     })
 
-    if ok then
-      self.extmark_id = extmark_id
-    else
-      self.extmark_id = nil
-    end
+    self.extmark_id = ok and extmark_id or nil
   end
 end
 

@@ -6,18 +6,18 @@ local log = reload 'plink.log'
 
 local M = {}
 
-local delay = 500
-local trace_name = '#plink'
+local DELAY = 500
+local TRACE_PREFIX = '#plink'
 
 local search_async = async.wrap(function(query, callback)
   callback(M.search(query))
 end, 2)
 
-local runner, timer = util.debounce(function(query, callback)
-  search_async(query, callback)
-end, delay)
+local async_runner, timer = util.debounce(search_async, DELAY)
 
+---@generic T : any
 ---@param query string
+---@param callback fun(value: T[]): nil
 ---@return nil
 M.search_async = function(query, callback)
   log.trace('search_async = ' .. query)
@@ -25,11 +25,11 @@ M.search_async = function(query, callback)
     return nil
   end
 
-  runner(query, function(plugins)
+  async_runner(query, function(plugins)
     local count = plugins and #plugins or 0
     log.trace('query "' .. query .. '"' .. ' returned ' .. count .. ' results')
-    timer:stop()
     callback(plugins)
+    timer:stop()
   end)
 end
 
@@ -38,7 +38,7 @@ M.search = function(query)
   return util.time(
     api.search,
     {
-      name = trace_name .. '.search("' .. query .. '")',
+      name = TRACE_PREFIX .. '.search("' .. query .. '")',
       level = 'trace',
     },
     query

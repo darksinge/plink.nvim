@@ -1,11 +1,13 @@
 local Layout = require('nui.layout')
 local defaults = require('nui.utils').defaults
 local event = require('nui.utils.autocmd').event
-local search = require('plink.search')
+local search = reload('plink.search')
 local Config = reload('plink.config')
 local Input = reload('plink.ui.component.input')
 local Output = reload('plink.ui.component.output')
 local BasePopup = reload('plink.ui.component.popup')
+local util = reload('plink.util')
+local _ = require('neodash')
 
 local SearchLayout = Layout:extend('SearchLayout')
 
@@ -18,40 +20,50 @@ function SearchLayout:init(options)
   local input_opts = defaults(options.search_input, Config.options.search_input)
   input_opts.on_submit = function(value)
     vim.api.nvim_command('stopinsert')
-    pcall(self.input.spinner.start, self.input.spinner)
+    self.input:start_spinner()
     search.search_async(value, function(plugins)
-      local lines = {}
-      for _, plugin in ipairs(plugins) do
-        table.insert(lines, plugin.name)
+      if not plugins then
+        return
       end
-      local bufnr = self.output.bufnr
-      vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
-      this.output.hidden = false
-      pcall(this.toggle_active, this)
-      pcall(this.update, this, function()
-        pcall(self.input.spinner.stop, self.input.spinner)
-      end)
+
+      local lines = _.map(function(plugin)
+        return '  ' .. plugin.name
+      end, plugins)
+
+      this:toggle_active()
+      self.output:set_lines(lines)
+      self.input:stop_spinner()
+
+      this:update()
     end)
   end
 
-  self.input = Input(input_opts, { size = { height = 3, width = '100%' }, })
+  local input_layout_opts = input_opts.layout
+  input_opts.layout = nil
+  self.input = Input(input_opts, input_layout_opts)
   self.input.active = true
   self.input.hidden = false
 
   local output_opts = defaults(options.search_output, Config.options.search_output)
-  self.output = Output(output_opts, { size = { height = '50%' }, grow = 1 })
+  local output_layout_opts = output_opts.layout
+  output_opts.layout = nil
+  self.output = Output(output_opts, output_layout_opts)
   self.output.active = false
-  self.output.hidden = true
+  self.output.hidden = false
 
   self.layout_opts = defaults(options.search_layout, Config.options.search_layout)
-  self.layout_opts.dir = 'col'
+  local inner_layout_opts = self.layout_opts.inner_layout
+  self.layout_opts.inner_layout = nil
+
+  self.inner_layout = Layout.Box({
+    self.input.layout,
+    self.output.layout,
+  }, inner_layout_opts)
+
   SearchLayout.super.init(
     self,
     self.layout_opts,
-    Layout.Box({
-      self.input.layout,
-      self.output.layout,
-    }, { dir = 'col' })
+    self.inner_layout
   )
 end
 
@@ -76,7 +88,7 @@ function SearchLayout:update(callback)
   SearchLayout.super.update(
     self,
     self.layout_opts,
-    Layout.Box(layouts, { dir = 'col' })
+    self.inner_layout
   )
 
   for _, component in ipairs({ self.input, self.output }) do
@@ -92,32 +104,27 @@ function SearchLayout:update(callback)
   end
 end
 
--- function SearchLayout:mount()
---   SearchLayout.super.mount(self)
---   local this = self
---   local input = self.input
---   local output = self.output
---   for _, component in ipairs({ input, output }) do
---     component:on(event.BufLeave, function()
---       print('leaving buf!')
---       component.active = false
---       if input.active == false and output.active == false then
---         pcall(this.unmount, this)
---       end
---     end)
---   end
--- end
+function SearchLayout:mount()
+  SearchLayout.super.mount(self)
+  self.input:map('n', '<C-j>', function()
+    self.output:focus()
+  end, { noremap = true, silent = true })
+
+  self.output:map('n', '<C-k>', function()
+    self.input:focus()
+  end, { noremap = true, silent = true })
+end
 
 local layout = SearchLayout()
--- layout.input.border._.size_delta.height = 0
--- layout.input.border._.size_delta.width = 0
--- P(layout.input.border._.padding)
 
 local force_close = vim.schedule_wrap(function()
+  layout:unmount()
   for _, winid in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
-    local opts = vim.api.nvim_win_get_config(winid)
-    if opts.zindex and opts.anchor and opts.relative == 'win' then
-      vim.api.nvim_win_close(winid, true)
+    local ok, opts = pcall(vim.api.nvim_win_get_config, winid)
+    if ok and opts and opts.zindex and opts.anchor and opts.relative then
+      if vim.api.nvim_win_is_valid(winid) then
+        pcall(vim.api.nvim_win_close, winid, true)
+      end
     end
   end
 end)

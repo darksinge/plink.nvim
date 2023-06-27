@@ -152,25 +152,31 @@ function M.defaults()
     search_layout = {
       position = "50%",
       size = {
-        width = '66%',
+        width = '40%',
         height = "50%",
       },
-      -- dir = 'col',
+      inner_layout = {
+        dir = 'col',
+      },
     },
     search_input = {
+      win_options = {
+        spell = false,
+      },
       size = {
         width = "100%",
       },
       border = {
         style = 'rounded',
-        -- style = {
-        --   top_left = "╭", top = "─", top_right = "╮",
-        --   left = "│", right = "│",
-        --   bottom_left = "├", bottom = "─", bottom_right = "┤",
-        -- },
         text = {
           top = "Search",
           top_align = "center",
+        },
+      },
+      layout = {
+        size = {
+          height = 3,
+          width = '100%',
         },
       },
     },
@@ -178,15 +184,16 @@ function M.defaults()
       enter = false,
       border = {
         style = 'rounded',
-        -- style = {
-        --   top_left = "├", top = "─", top_right = "┤",
-        --   left = "│", right = "│",
-        --   bottom_left = "╰", bottom = "─", bottom_right = "╯",
-        -- },
         text = {
           top = "Results",
           top_align = "center",
         },
+      },
+      layout = {
+        grow = 1,
+      },
+      buf_options = {
+        filetype = "markdown",
       },
     }
   }
