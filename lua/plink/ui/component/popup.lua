@@ -13,11 +13,20 @@ function BasePopup:init(opts, layout_opts)
   self.active = opts.active or false
   self.layout = Layout.Box(self, layout_opts)
   BasePopup.super.init(self, opts)
-  -- print('underscore =', vim.inspect(self._))
 end
 
 function BasePopup:is_buf_exists()
   return vim.fn.bufexists(self.bufnr) == 1
+end
+
+function BasePopup:mount()
+  BasePopup.super.mount(self)
+  self:on(event.BufEnter, function()
+    local ok, illuminate = pcall(require, 'illuminate')
+    if ok then
+      illuminate.pause_buf()
+    end
+  end)
 end
 
 function BasePopup:unmount()

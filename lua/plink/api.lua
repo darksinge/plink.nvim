@@ -36,7 +36,7 @@ M.search = function(query)
   local res = curl.get({
     url = build_url('/search', {
       q = query,
-      testDelay = 1000,
+      -- testDelay = 1000,
     }),
   })
 
@@ -55,7 +55,7 @@ end
 M.search_job = function(query, handler)
   local url = build_url('/search', {
     q = query,
-    -- testDelay = 1000,
+    testDelay = 1000,
   })
 
   Job:new({

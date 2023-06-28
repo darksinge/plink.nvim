@@ -27,6 +27,7 @@ function SearchOutput:init(options, layout_opts)
   SearchOutput.super.init(self, options, layout_opts)
 
   self._.on_move_cursor = options.on_move_cursor
+  self._on_select = options.on_select
 end
 
 function SearchOutput:set_active_line(lnum)
@@ -61,12 +62,13 @@ function SearchOutput:mount()
   local termguicolors_prev = vim.api.nvim_get_option_value('termguicolors', { scope = 'global' })
   local guicursor_prev = vim.api.nvim_get_option_value('guicursor', { scope = 'global' })
 
-  self:on(event.BufEnter, function()
-    local ill_ok, illuminate = pcall(require, 'illuminate')
-    if ill_ok then
-      illuminate.pause_buf()
-    end
+  self:map('n', 'L', ':Lazy<cr>', { silent = true, noremap = true })
 
+  self:map('n', '<cr>', function()
+    self:on_select()
+  end, { silent = true, noremap = true })
+
+  self:on(event.BufEnter, function()
     vim.cmd([[set termguicolors]])
     vim.cmd([[hi Cursor blend=100]])
     vim.cmd([[set guicursor+=a:Cursor/lCursor]])
@@ -89,20 +91,45 @@ function SearchOutput:mount()
     self:on_move_cursor()
   end)
 
+  self.line_count = 0
+
   SearchOutput.super.mount(self)
 end
 
 function SearchOutput:set_lines(lines)
   vim.api.nvim_buf_set_lines(self.bufnr, 0, -1, false, lines)
   self:set_active_line(1)
+  self.line_count = #lines
+  -- local title = 'Results 1 / ' .. #lines
+  -- self:set_title(title)
+  self.border:set_text('bottom', ' Lazy (L) ', 'center')
+end
+
+function SearchOutput:set_title(title)
+  pcall(self.border.set_text, self.border, 'top', title, 'center')
+end
+
+local function is_fun(fn)
+  return type(fn) == 'function'
+end
+
+function SearchOutput:on_select()
+  local lnum = vim.api.nvim_win_get_cursor(0)[1]
+  local on_select = self._on_select
+  if is_fun(on_select) then
+    on_select(lnum)
+  end
 end
 
 function SearchOutput:on_move_cursor()
   local lnum = vim.api.nvim_win_get_cursor(0)[1]
   self:set_active_line(lnum)
 
+  -- local title = '1 / ' .. self.line_count
+  -- self:set_title(title)
+
   local on_move_cursor = self._.on_move_cursor
-  if type(on_move_cursor) == 'function' then
+  if is_fun(on_move_cursor) then
     on_move_cursor(lnum)
   end
 end

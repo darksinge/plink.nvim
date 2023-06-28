@@ -62,7 +62,7 @@ function SearchLayout:init(options)
       self.output:set_lines(lines)
       self.details:set_plugin(plugins[1])
       self.input:stop_spinner()
-      this:toggle_active()
+      this:set_active(self.output)
 
       this:update()
     end)
@@ -92,6 +92,11 @@ function SearchLayout:init(options)
       end
     end
   end
+
+  output_opts.on_select = function(_)
+    self:set_active(self.details)
+  end
+
   self.output = Output(output_opts, output_layout_opts)
   self.output.active = false
   self.output.hidden = false
@@ -127,10 +132,14 @@ function SearchLayout:init(options)
   )
 end
 
-function SearchLayout:toggle_active()
-  local temp = self.input.active
-  self.input.active = not temp
-  self.output.active = temp
+function SearchLayout:set_active(component)
+  component.active = true
+  for _, comp in ipairs({ self.input, self.output, self.details }) do
+    if comp ~= component then
+      comp.active = false
+    end
+  end
+  component:focus()
 end
 
 function SearchLayout:update()

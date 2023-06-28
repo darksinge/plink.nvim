@@ -61,9 +61,14 @@ function Details:init(options, layout_opts)
   }, options.win_options or {})
 
   Details.super.init(self, options, layout_opts)
+
+  self:on(event.BufEnter, function()
+    self:lock_buf()
+  end)
 end
 
 function Details:set_lines(lines)
+  self:unlock_buf()
   vim.api.nvim_buf_set_lines(self.bufnr, 0, -1, false, { '' })
   lines = _.map(function(line)
     if type(line) == 'string' then
@@ -75,6 +80,7 @@ function Details:set_lines(lines)
   for i, line in ipairs(lines) do
     line:render(self.bufnr, self.ns_id, i)
   end
+  self:lock_buf()
 end
 
 ---@param plugin Plugin

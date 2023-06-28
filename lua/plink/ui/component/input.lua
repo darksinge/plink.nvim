@@ -22,8 +22,8 @@ end
 local SearchInput = BasePopup:extend('SearchInput')
 
 function SearchInput:init(options, layout_opts)
-  vim.fn.sign_define('multiprompt_sign', { text = ' ', texthl = 'LineNr', numhl = 'LineNr' })
-  vim.fn.sign_define('singleprompt_sign', { text = ' ', texthl = 'LineNr', numhl = 'LineNr' })
+  -- vim.fn.sign_define('multiprompt_sign', { text = ' ', texthl = 'LineNr', numhl = 'LineNr' })
+  -- vim.fn.sign_define('singleprompt_sign', { text = ' ', texthl = 'LineNr', numhl = 'LineNr' })
 
   if not is_type('boolean', options.enter) then
     options.enter = true
@@ -97,13 +97,7 @@ function SearchInput:init(options, layout_opts)
     local bufnr = self.bufnr
     props.on_change = function()
       local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-      if #lines == 1 then
-        vim.fn.sign_place(0, 'my_group', 'singleprompt_sign', bufnr, { lnum = 1, priority = 10 })
-      else
-        for i = 1, #lines do
-          vim.fn.sign_place(0, 'my_group', 'multiprompt_sign', bufnr, { lnum = i, priority = 10 })
-        end
-      end
+      -- vim.fn.sign_place(0, 'my_group', 'singleprompt_sign', bufnr, { lnum = 1, priority = 10 })
       options.on_change(table.concat(lines, '\n'))
     end
   end
@@ -163,17 +157,21 @@ function SearchInput:mount()
 end
 
 function SearchInput:toggle_placeholder()
+
+  require('illuminate').pause_buf()
   local bufnr = self.bufnr
+  local ns_id = self.ns_id
   local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
   local text = table.concat(lines, '\n')
   if self.extmark then
-    vim.api.nvim_buf_del_extmark(bufnr, Config.namespace_id, self.extmark)
+    vim.api.nvim_buf_del_extmark(bufnr, ns_id, self.extmark)
   end
   if #text == 0 then
-    self.extmark = vim.api.nvim_buf_set_extmark(bufnr, Config.namespace_id, 0, 0, {
+    self.extmark = vim.api.nvim_buf_set_extmark(bufnr, ns_id, 0, -1, {
       virt_text = {
         {
-          'Search plugins...',
+          'Search phrase...',
+          'NonText',
         },
       },
       virt_text_pos = 'overlay',
@@ -212,9 +210,9 @@ function SearchInput:display_input_suffix(suffix)
   if suffix then
     local ok, extmark_id = nvim_buf_set_extmark(self.bufnr, Config.namespace_id, 0, -1, {
       virt_text = {
-        { "", "ChatGPTTotalTokensBorder" },
-        { "" .. suffix, "ChatGPTTotalTokens" },
-        { "", "ChatGPTTotalTokensBorder" },
+        { "", "PlinkLoadingPillEdge" },
+        { "" .. suffix, "PlinkLoadingPillCenter" },
+        { "", "PlinkLoadingPillEdge" },
         { " ", "" },
       },
       virt_text_pos = "right_align",
