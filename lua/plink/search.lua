@@ -1,8 +1,7 @@
 local async = require('plenary.async')
-local api = require('plink.api')
+local api = reload('plink.api')
 local util = require('plink.util')
 local log = reload 'plink.log'
--- local plugin_finder = require('plink.telescope')
 
 local M = {}
 
@@ -15,22 +14,19 @@ end, 2)
 
 local async_runner, timer = util.debounce(search_async, DELAY)
 
+local base_url = 'https://3051j7te1j.execute-api.us-east-1.amazonaws.com'
+
 ---@generic T : any
 ---@param query string
----@param callback fun(value: T[]): nil
+---@param handler fun(value: T[]): nil
 ---@return nil
-M.search_async = function(query, callback)
+M.search_async = function(query, handler)
   log.trace('search_async = ' .. query)
   if type(query) ~= 'string' then
     return nil
   end
 
-  async_runner(query, function(plugins)
-    local count = plugins and #plugins or 0
-    log.trace('query "' .. query .. '"' .. ' returned ' .. count .. ' results')
-    callback(plugins)
-    timer:stop()
-  end)
+  api.search_job(query, handler)
 end
 
 ---@param query string

@@ -21,12 +21,12 @@ function SearchOutput:init(options, layout_opts)
 
   options.win_options = vim.tbl_deep_extend('keep', {
     winblend = 10,
-    winhighlight = "Normal:Normal,FloatBorder:FloatBorder",
+    winhighlight = "Normal:Normal,FloatBorder:FloatBorder,CursorLine:Search",
     cursorline = true,
-    -- modifiable = false,
   }, options.win_options or {})
 
   SearchOutput.super.init(self, options, layout_opts)
+
 end
 
 function SearchOutput:set_active_line(lnum)
@@ -130,12 +130,5 @@ function SearchOutput:set_lines(lines)
   vim.api.nvim_buf_set_lines(self.bufnr, 0, -1, false, lines)
   self:set_active_line(1)
 end
-
--- local pos = vim.api.nvim_win_get_cursor(0)
--- local lnum = pos[1]
--- local curr_line = vim.api.nvim_buf_get_lines(000000000, lnum - 1, lnum, false)[1]
--- curr_line = '   ' .. curr_line
--- curr_line = curr_line:gsub('^%s+', '')
--- print(curr_line)
 
 return SearchOutput

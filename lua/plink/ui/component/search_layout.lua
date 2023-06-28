@@ -23,6 +23,7 @@ function SearchLayout:init(options)
     self.input:start_spinner()
     search.search_async(value, function(plugins)
       if not plugins then
+        self.input:stop_spinner()
         return
       end
 
@@ -30,9 +31,9 @@ function SearchLayout:init(options)
         return '  ' .. plugin.name
       end, plugins)
 
-      this:toggle_active()
       self.output:set_lines(lines)
       self.input:stop_spinner()
+      this:toggle_active()
 
       this:update()
     end)

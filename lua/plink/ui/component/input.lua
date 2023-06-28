@@ -135,14 +135,12 @@ function SearchInput:mount()
   end
 
   self:map('i', '<cr>', function()
-    print('insert mode')
     local lines = vim.api.nvim_buf_get_lines(self.bufnr, 0, -1, false)
     local value = table.concat(lines, '\n')
     props.on_submit(value)
   end, { noremap = true })
 
   self:map('n', '<cr>', function()
-    print('normal mode')
     local lines = vim.api.nvim_buf_get_lines(self.bufnr, 0, -1, false)
     local value = table.concat(lines, '\n')
     props.on_submit(value)
