@@ -20,16 +20,17 @@ function SearchOutput:init(options, layout_opts)
   }, options.buf_options or {})
 
   options.win_options = vim.tbl_deep_extend('keep', {
-    winblend = 10,
-    winhighlight = "Normal:Normal,FloatBorder:FloatBorder,CursorLine:Search",
+    winhighlight = "Normal:NormalFloat,FloatBorder:FloatBorder,CursorLine:Visual",
     cursorline = true,
   }, options.win_options or {})
 
   SearchOutput.super.init(self, options, layout_opts)
 
+  self._.on_move_cursor = options.on_move_cursor
 end
 
 function SearchOutput:set_active_line(lnum)
+  self:unlock_buf()
   local prev_ok, prev = pcall(vim.api.nvim_buf_get_lines, self.bufnr, lnum - 2, lnum - 1, true)
   if prev_ok and prev and #prev > 0 then
     local line = prev[1]
@@ -51,36 +52,7 @@ function SearchOutput:set_active_line(lnum)
       pcall(vim.api.nvim_buf_set_lines, self.bufnr, lnum + 0, lnum + 1, true, { line })
     end
   end
-end
-
-function SearchOutput:before_move_cursor()
-  vim.api.nvim_buf_set_option(self.bufnr, 'modifiable', true)
-  vim.api.nvim_buf_set_option(self.bufnr, 'readonly', false)
-end
-
-function SearchOutput:after_move_cursor()
-  vim.api.nvim_buf_set_option(self.bufnr, 'modifiable', false)
-  vim.api.nvim_buf_set_option(self.bufnr, 'readonly', true)
-end
-
----@param dir 'up' | 'down'
----@return nil
-function SearchOutput:move_cusor(dir)
-  if not dir then
-    return
-  end
-
-  self:before_move_cursor()
-  if dir == 'down' then
-    vim.cmd('normal! j')
-  elseif dir == 'up' then
-    vim.cmd('normal! k')
-  end
-
-  local lnum = vim.api.nvim_win_get_cursor(0)[1]
-  self:set_active_line(lnum)
-
-  self:after_move_cursor()
+  self:lock_buf()
 end
 
 function SearchOutput:mount()
@@ -95,33 +67,27 @@ function SearchOutput:mount()
       illuminate.pause_buf()
     end
 
-    vim.api.nvim_buf_set_option(self.bufnr, 'modifiable', false)
-    vim.api.nvim_buf_set_option(self.bufnr, 'readonly', true)
     vim.cmd([[set termguicolors]])
     vim.cmd([[hi Cursor blend=100]])
     vim.cmd([[set guicursor+=a:Cursor/lCursor]])
+
+    self:lock_buf()
   end)
 
   self:on(event.BufLeave, function()
-    vim.api.nvim_buf_set_option(self.bufnr, 'modifiable', true)
-    vim.api.nvim_buf_set_option(self.bufnr, 'readonly', false)
-
     if termguicolors_prev == false then
       vim.cmd([[set notermguicolors]])
     end
 
     vim.cmd('hi Cursor blend=' .. blend_prev)
     vim.cmd('set guicursor=' .. guicursor_prev)
+
+    self:unlock_buf()
   end)
 
-  self:map('n', 'j', function()
-    self:move_cusor('down')
+  self:on(event.CursorMoved, function()
+    self:on_move_cursor()
   end)
-
-  self:map('n', 'k', function()
-    self:move_cusor('up')
-  end)
-
 
   SearchOutput.super.mount(self)
 end
@@ -129,6 +95,16 @@ end
 function SearchOutput:set_lines(lines)
   vim.api.nvim_buf_set_lines(self.bufnr, 0, -1, false, lines)
   self:set_active_line(1)
+end
+
+function SearchOutput:on_move_cursor()
+  local lnum = vim.api.nvim_win_get_cursor(0)[1]
+  self:set_active_line(lnum)
+
+  local on_move_cursor = self._.on_move_cursor
+  if type(on_move_cursor) == 'function' then
+    on_move_cursor(lnum)
+  end
 end
 
 return SearchOutput

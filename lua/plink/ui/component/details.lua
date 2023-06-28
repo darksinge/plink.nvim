@@ -10,12 +10,26 @@ local u = require('plink.util')
 
 local Details = BasePopup:extend('Details')
 
+local floatTitleOpts = vim.api.nvim_get_hl(0, { name = 'FloatTitle' })
+vim.api.nvim_set_hl(0, "PlinkTitle",
+  { fg = floatTitleOpts.fg, bg = floatTitleOpts.bg, bold = true, default = true })
+
+vim.api.nvim_set_hl(0, "PlinkTitleLink",
+  { fg = floatTitleOpts.fg, bg = floatTitleOpts.bg, underline = true, bold = true, default = true })
+
 local function part_text_to_width(text, width)
-  width = math.max(width, 30)
+  local min_width = 30
+  local max_width = vim.api.nvim_get_option_value('textwidth', { scope = 'global' })
+  width = u.clamp(
+    width,
+    min_width,
+    max_width == 0 and 80 or max_width
+  ) - 5
+
   local lines = {}
   local i = 1
   while i <= #text do
-    local to = i + width - 1
+    local to = i + width
     local char = string.sub(text, to, to)
     while char ~= ' ' and to <= #text do
       to = to + 1
@@ -33,7 +47,6 @@ local function part_text_to_width(text, width)
 end
 
 function Details:init(options, layout_opts)
-  -- TODO: Create options table for this
   options = defaults(options, Config.search_details)
   options.enter = false
   options.focusable = false
@@ -44,7 +57,6 @@ function Details:init(options, layout_opts)
   }, options.buf_options or {})
 
   options.win_options = vim.tbl_deep_extend('keep', {
-    winblend = 10,
     cursorline = false,
   }, options.win_options or {})
 
@@ -67,10 +79,15 @@ end
 
 ---@param plugin Plugin
 function Details:set_plugin(plugin)
+  local url_icon = ' '
+  if plugin.url:match('github.com') then
+    url_icon = ' '
+  end
   local lines = {
-    Line({ Text(' ' .. plugin.name, 'Title') }),
-    Line({ Text(' ' .. plugin.url) }),
+    Line({ Text(' ' .. plugin.name, 'PlinkTitle') }),
+    Line({ Text(url_icon, 'PlinkTitle'), Text(plugin.url, 'PlinkTitleLink') }),
     Line({ Text('') }),
+    Line({ Text(' Description', 'PlinkTitle') }),
   }
 
   local winid = u.buf_get_win(self.bufnr)
@@ -80,11 +97,11 @@ function Details:set_plugin(plugin)
   end
 
   table.insert(lines, Line({ Text('') }))
-  table.insert(lines, Line({ Text('GitHub Stargazers: ' .. plugin.stars) }))
+  table.insert(lines, Line({ Text(' GitHub Stargazers', 'PlinkTitle'), Text(' ' .. plugin.stars) }))
   table.insert(lines, Line({ Text('') }))
-  table.insert(lines, Line({ Text('Tags') }))
+  table.insert(lines, Line({ Text('Tags', 'PlinkTitle') }))
   for _, tag in ipairs(plugin.tags) do
-    table.insert(lines, Line({ Text(' •' .. tag) }))
+    table.insert(lines, Line({ Text('- ' .. tag) }))
   end
 
   self:set_lines(lines)

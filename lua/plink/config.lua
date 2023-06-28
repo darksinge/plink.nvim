@@ -152,8 +152,10 @@ function M.defaults()
     search_layout = {
       position = "50%",
       size = {
-        width = '40%',
+        width = '33%',
         height = "50%",
+        min_width = 60,
+        max_width = 200,
       },
       inner_layout = {
         dir = 'col',

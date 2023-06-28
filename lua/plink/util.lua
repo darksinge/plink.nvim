@@ -112,4 +112,23 @@ function M.buf_get_win(bufnr)
   return 0
 end
 
+---@param n number | string
+---@param min number | nil
+---@param max number | nil
+function M.clamp(n, min, max)
+  if min and max then
+    assert(min <= max)
+  end
+
+  if min and n < min then
+    return min
+  end
+
+  if max and n > max then
+    return max
+  end
+
+  return n
+end
+
 return M

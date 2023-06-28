@@ -10,7 +10,32 @@ local BasePopup = reload('plink.ui.component.popup')
 local util = reload('plink.util')
 local _ = require('neodash')
 
+-- local icons = lvim.icons.ui
+
 local SearchLayout = Layout:extend('SearchLayout')
+
+---@param size number | string | { width: number | string }
+local function calc_width(size)
+  local width
+
+  if type(size) == 'table' then
+    width = size.width
+  else
+    width = size
+  end
+
+  if type(width) == 'string' then
+    local pct = width:match('^(%d+)%%$')
+    if pct then
+      pct = tonumber(pct)
+      local winid = vim.api.nvim_get_current_win()
+      local curr_width = vim.api.nvim_win_get_width(winid)
+      return math.floor(curr_width * (pct / 100))
+    end
+  end
+
+  return width
+end
 
 function SearchLayout:init(options)
   local this = self
@@ -23,6 +48,8 @@ function SearchLayout:init(options)
     vim.api.nvim_command('stopinsert')
     self.input:start_spinner()
     search.search_async(value, function(plugins)
+      self.plugins = plugins
+
       if not plugins then
         self.input:stop_spinner()
         return
@@ -41,6 +68,13 @@ function SearchLayout:init(options)
     end)
   end
 
+  local search_details = defaults(options.search_details, Config.options.search_details)
+  local search_details_layout_opts = search_details.layout
+  search_details.layout = nil
+  self.details = Details(search_details, search_details_layout_opts)
+  self.details.active = false
+  self.details.hidden = false
+
   local input_layout_opts = input_opts.layout
   input_opts.layout = nil
   self.input = Input(input_opts, input_layout_opts)
@@ -50,16 +84,33 @@ function SearchLayout:init(options)
   local output_opts = defaults(options.search_output, Config.options.search_output)
   local output_layout_opts = output_opts.layout
   output_opts.layout = nil
+  output_opts.on_move_cursor = function(row)
+    if self.plugins and row then
+      local plugin = self.plugins[row]
+      if plugin then
+        self.details:set_plugin(plugin)
+      end
+    end
+  end
   self.output = Output(output_opts, output_layout_opts)
   self.output.active = false
   self.output.hidden = false
 
-  -- TODO: Add default options for `details` instead of borrowing `output`'s options
-  self.details = Details(output_opts, output_layout_opts)
-  self.details.active = false
-  self.details.hidden = false
-
   self.layout_opts = defaults(options.search_layout, Config.options.search_layout)
+  if self.layout_opts.size then
+    local size = self.layout_opts.size
+    local width = calc_width(size)
+    local type_ = type(size)
+    if type_ == 'string' or type_ == 'number' then
+      self.layout_opts.size = width
+    elseif type_ == 'table' then
+      local min = size.min_width
+      local max = size.max_width
+      width = util.clamp(width, min, max)
+      self.layout_opts.size.width = width
+    end
+  end
+
   local inner_layout_opts = self.layout_opts.inner_layout
   self.layout_opts.inner_layout = nil
 
@@ -82,7 +133,7 @@ function SearchLayout:toggle_active()
   self.output.active = temp
 end
 
-function SearchLayout:update(callback)
+function SearchLayout:update()
   local layouts = {}
   if not self.input.hidden then
     table.insert(layouts, self.input.layout)
@@ -107,13 +158,11 @@ function SearchLayout:update(callback)
       pcall(component.focus, component)
     end
   end
-
-  if type(callback) == 'function' then
-    callback()
-  end
 end
 
 function SearchLayout:mount()
+  SearchLayout.super.mount(self)
+
   self.details:map('n', '<C-j>', function()
     self.input:focus()
   end, { noremap = true, silent = true })
@@ -129,8 +178,6 @@ function SearchLayout:mount()
   self.output:map('n', '<C-k>', function()
     self.input:focus()
   end, { noremap = true, silent = true })
-
-  SearchLayout.super.mount(self)
 end
 
 local layout = SearchLayout()

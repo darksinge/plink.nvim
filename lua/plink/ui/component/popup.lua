@@ -33,4 +33,14 @@ function BasePopup:focus()
   end
 end
 
+function BasePopup:lock_buf()
+  vim.api.nvim_buf_set_option(self.bufnr, 'modifiable', false)
+  vim.api.nvim_buf_set_option(self.bufnr, 'readonly', true)
+end
+
+function BasePopup:unlock_buf()
+  vim.api.nvim_buf_set_option(self.bufnr, 'modifiable', true)
+  vim.api.nvim_buf_set_option(self.bufnr, 'readonly', false)
+end
+
 return BasePopup
