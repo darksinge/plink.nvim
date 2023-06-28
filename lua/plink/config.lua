@@ -181,7 +181,6 @@ function M.defaults()
       },
     },
     search_output = {
-      enter = false,
       border = {
         style = 'rounded',
         text = {
@@ -193,7 +192,22 @@ function M.defaults()
         grow = 1,
       },
       buf_options = {
-        filetype = "markdown",
+        filetype = "plink",
+      },
+    },
+    search_details = {
+      border = {
+        style = 'rounded',
+        text = {
+          top = "Details",
+          top_align = "center",
+        },
+      },
+      layout = {
+        grow = 1,
+      },
+      buf_options = {
+        filetype = "plink",
       },
     }
   }

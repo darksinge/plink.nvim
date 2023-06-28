@@ -100,4 +100,16 @@ function M.debounce(fn, ms, first)
   return wrapped_fn, timer
 end
 
+---@param bufnr integer
+---@return integer
+function M.buf_get_win(bufnr)
+  for _, winid in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+    local win_bufnr = vim.api.nvim_win_get_buf(winid)
+    if win_bufnr == bufnr then
+      return winid
+    end
+  end
+  return 0
+end
+
 return M

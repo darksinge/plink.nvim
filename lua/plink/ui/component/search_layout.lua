@@ -5,6 +5,7 @@ local search = reload('plink.search')
 local Config = reload('plink.config')
 local Input = reload('plink.ui.component.input')
 local Output = reload('plink.ui.component.output')
+local Details = reload('plink.ui.component.details')
 local BasePopup = reload('plink.ui.component.popup')
 local util = reload('plink.util')
 local _ = require('neodash')
@@ -32,6 +33,7 @@ function SearchLayout:init(options)
       end, plugins)
 
       self.output:set_lines(lines)
+      self.details:set_plugin(plugins[1])
       self.input:stop_spinner()
       this:toggle_active()
 
@@ -52,11 +54,17 @@ function SearchLayout:init(options)
   self.output.active = false
   self.output.hidden = false
 
+  -- TODO: Add default options for `details` instead of borrowing `output`'s options
+  self.details = Details(output_opts, output_layout_opts)
+  self.details.active = false
+  self.details.hidden = false
+
   self.layout_opts = defaults(options.search_layout, Config.options.search_layout)
   local inner_layout_opts = self.layout_opts.inner_layout
   self.layout_opts.inner_layout = nil
 
   self.inner_layout = Layout.Box({
+    self.details.layout,
     self.input.layout,
     self.output.layout,
   }, inner_layout_opts)
@@ -106,7 +114,14 @@ function SearchLayout:update(callback)
 end
 
 function SearchLayout:mount()
-  SearchLayout.super.mount(self)
+  self.details:map('n', '<C-j>', function()
+    self.input:focus()
+  end, { noremap = true, silent = true })
+
+  self.input:map('n', '<C-k>', function()
+    self.details:focus()
+  end, { noremap = true, silent = true })
+
   self.input:map('n', '<C-j>', function()
     self.output:focus()
   end, { noremap = true, silent = true })
@@ -114,6 +129,8 @@ function SearchLayout:mount()
   self.output:map('n', '<C-k>', function()
     self.input:focus()
   end, { noremap = true, silent = true })
+
+  SearchLayout.super.mount(self)
 end
 
 local layout = SearchLayout()
