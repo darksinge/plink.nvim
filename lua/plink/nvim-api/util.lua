@@ -16,8 +16,6 @@ M.create_user_command = vim.api.nvim_create_user_command
 
 M.del_current_line = vim.api.nvim_del_current_line
 
-M.del_keymap = vim.api.nvim_del_keymap
-
 M.del_mark = vim.api.nvim_del_mark
 
 M.del_user_command = vim.api.nvim_del_user_command
@@ -59,8 +57,6 @@ M.get_current_win = vim.api.nvim_get_current_win
 M.get_hl = vim.api.nvim_get_hl
 
 M.get_hl_id_by_name = vim.api.nvim_get_hl_id_by_name
-
-M.get_keymap = vim.api.nvim_get_keymap
 
 M.get_mark = vim.api.nvim_get_mark
 
@@ -129,8 +125,6 @@ M.set_hl = vim.api.nvim_set_hl
 M.set_hl_ns = vim.api.nvim_set_hl_ns
 
 M.set_hl_ns_fast = vim.api.nvim_set_hl_ns_fast
-
-M.set_keymap = vim.api.nvim_set_keymap
 
 M.set_option = vim.api.nvim_set_option
 

@@ -46,10 +46,6 @@ M.set_var = vim.api.nvim_win_set_var
 
 M.set_width = vim.api.nvim_win_set_width
 
-M.tabpage_list = vim.api.nvim_tabpage_list_wins
-
-M.tabpage_get = vim.api.nvim_tabpage_get_win
-
 M.set_current = vim.api.nvim_set_current_win
 
 M.list = vim.api.nvim_list_wins

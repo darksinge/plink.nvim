@@ -189,26 +189,8 @@ function SearchLayout:mount()
   end, { noremap = true, silent = true })
 end
 
-local layout = SearchLayout()
+-- local layout = SearchLayout()
 
-local force_close = vim.schedule_wrap(function()
-  layout:unmount()
-  for _, winid in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
-    local ok, opts = pcall(vim.api.nvim_win_get_config, winid)
-    if ok and opts and opts.zindex and opts.anchor and opts.relative then
-      if vim.api.nvim_win_is_valid(winid) then
-        pcall(vim.api.nvim_win_close, winid, true)
-      end
-    end
-  end
-end)
-
-vim.keymap.set('n', '<leader>bc', force_close, {
-  silent = true,
-  noremap = true,
-  buffer = true,
-})
-
-layout:mount(layout)
+-- layout:mount()
 
 return SearchLayout

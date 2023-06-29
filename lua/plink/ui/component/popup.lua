@@ -4,6 +4,7 @@ local defaults = require('nui.utils').defaults
 local Config = require('plink.config')
 local Layout = require('nui.layout')
 local u = reload('plink.util')
+local nvim = reload('plink.nvim-api')
 
 local BasePopup = Popup:extend('BasePopup')
 
@@ -21,11 +22,15 @@ end
 
 function BasePopup:mount()
   BasePopup.super.mount(self)
+
   self:on(event.BufEnter, function()
     local ok, illuminate = pcall(require, 'illuminate')
     if ok then
       illuminate.pause_buf()
     end
+
+    local winid = u.buf_get_win(self.bufnr)
+    nvim.win.set_var(winid, 'is_plink_window', true)
   end)
 end
 

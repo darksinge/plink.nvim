@@ -2,6 +2,17 @@ local M = {}
 
 function M.defaults()
   local defaults = {
+    keymaps = {
+      close = "<leader>pc",
+      force_close = "<leader>px",
+      cycle_windows = "<Tab>",
+      select_plugin = "<Space>",
+      install_plugin = "I",
+      delete_plugin = "D",
+      update_plugin = "U",
+      goto_plugin_config = "not implemented",
+      toggle_settings = "not implemented"
+    },
     search_layout = {
       position = "50%",
       size = {
@@ -69,7 +80,7 @@ function M.defaults()
   return defaults
 end
 
-M.options = {}
+M.options = M.defaults()
 
 M.namespace_id = vim.api.nvim_create_namespace("PlinkNS")
 
