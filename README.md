@@ -15,6 +15,7 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim)
 -- init.lua
 {
     'darksinge/plink.nvim',
+    commit = 'dc074d7',
     dependencies = {
       'nvim-lua/plenary.nvim',
       'darksinge/neodash.nvim',
