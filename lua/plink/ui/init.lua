@@ -4,6 +4,4 @@ local M = {}
 
 M.open = window.open
 
--- M.open()
-
 return M

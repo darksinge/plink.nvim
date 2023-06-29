@@ -189,8 +189,4 @@ function SearchLayout:mount()
   end, { noremap = true, silent = true })
 end
 
--- local layout = SearchLayout()
-
--- layout:mount()
-
 return SearchLayout

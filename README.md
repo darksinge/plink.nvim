@@ -15,7 +15,6 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim)
 -- init.lua
 {
     'darksinge/plink.nvim',
-    branch = 'develop', -- recommended for now...
     dependencies = {
       'nvim-lua/plenary.nvim',
       'darksinge/neodash.nvim',
@@ -39,7 +38,7 @@ With that said, after installing, run the following command to (hopefully) get
 the search window to appear:
 
 ```
-:lua require('plink.ui.component.search_layout')
+:lua require('plink.ui').open()
 ```
 
 But I reiterate: you should only look at this plugin (in its current state) if
