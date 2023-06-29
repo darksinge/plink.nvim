@@ -47,12 +47,9 @@ you're simply curious and want to play around. **You _will_ encounter bugs**.
 
 ## TODOs
 
-- add telescope extension
-  - also, ask yourself, is telescope the right tool for this? Part of me thinks
-    no...
 - auto install plugins on selection
   - copy config to clipboard by default
   - set up auto install for popular dists like lunarvim, lazyvim, nvchad,
     astrovim, kickstarter.nvim, etc.
 - allow sorting results by author, popularity, tags, etc.
-- cache results locally
+- make UI look as pretty as humanely possible
