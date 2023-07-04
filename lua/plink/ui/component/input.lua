@@ -101,6 +101,8 @@ function SearchInput:init(options, layout_opts)
       options.on_change(table.concat(lines, '\n'))
     end
   end
+
+  self._.on_move_cursor = options.on_move_cursor
 end
 
 function SearchInput:set_lines(start_idx, end_idx, strict_indexing, lines)
@@ -128,6 +130,10 @@ function SearchInput:mount()
     end, { once = true })
   end
 
+  self:on(event.CursorMoved, function()
+    self:on_move_cursor()
+  end)
+
   self:map('i', '<cr>', function()
     local lines = vim.api.nvim_buf_get_lines(self.bufnr, 0, -1, false)
     local value = table.concat(lines, '\n')
@@ -138,6 +144,14 @@ function SearchInput:mount()
     local lines = vim.api.nvim_buf_get_lines(self.bufnr, 0, -1, false)
     local value = table.concat(lines, '\n')
     props.on_submit(value)
+  end, { noremap = true })
+
+  self:map('n', 'k', function()
+    self:on_move_cursor('up')
+  end, { noremap = true })
+
+  self:map('n', 'j', function()
+    self:on_move_cursor('down')
   end, { noremap = true })
 
   self:toggle_placeholder()
@@ -153,11 +167,17 @@ function SearchInput:mount()
   })
 
   vim.api.nvim_command('startinsert!')
-  vim.fn.sign_place(0, 'my_group', 'plink-search', self.bufnr, { lnum = 1, priority = 10 })
+  vim.fn.sign_place(0, 'plink-search', 'plink-search', self.bufnr, { lnum = 1, priority = 10 })
+end
+
+---@param direction 'up' | 'down' | nil
+function SearchInput:on_move_cursor(direction)
+  if self._.on_move_cursor then
+    self._.on_move_cursor(direction)
+  end
 end
 
 function SearchInput:toggle_placeholder()
-
   require('illuminate').pause_buf()
   local bufnr = self.bufnr
   local ns_id = self.ns_id
@@ -210,10 +230,10 @@ function SearchInput:display_input_suffix(suffix)
   if suffix then
     local ok, extmark_id = nvim_buf_set_extmark(self.bufnr, Config.namespace_id, 0, -1, {
       virt_text = {
-        { "", "PlinkLoadingPillEdge" },
+        { "",        "PlinkLoadingPillEdge" },
         { "" .. suffix, "PlinkLoadingPillCenter" },
-        { "", "PlinkLoadingPillEdge" },
-        { " ", "" },
+        { "",        "PlinkLoadingPillEdge" },
+        { " ",          "" },
       },
       virt_text_pos = "right_align",
     })

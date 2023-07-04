@@ -47,7 +47,7 @@ function SearchLayout:init(options)
   input_opts.on_submit = function(value)
     vim.api.nvim_command('stopinsert')
     self.input:start_spinner()
-    search.search_async(value, function(plugins)
+    search.fake_search(value, function(plugins)
       self.plugins = plugins
 
       if not plugins then
@@ -55,17 +55,28 @@ function SearchLayout:init(options)
         return
       end
 
-      local lines = _.map(function(plugin)
-        return '  ' .. plugin.name
-      end, plugins)
+      local lines = _.map(function(plugin) return plugin.name end, plugins)
 
       self.output:set_lines(lines)
       self.details:set_plugin(plugins[1])
       self.input:stop_spinner()
-      this:set_active(self.output)
 
       this:update()
     end)
+  end
+
+  input_opts.on_move_cursor = function(direction)
+    if not type(direction) == 'string' then
+      return
+    end
+
+    local lnr = this.output:move_selected(direction)
+    if self.plugins and lnr then
+      local plugin = self.plugins[lnr]
+      if plugin then
+        self.details:set_plugin(plugin)
+      end
+    end
   end
 
   local search_details = defaults(options.search_details, Config.options.search_details)
@@ -187,6 +198,17 @@ function SearchLayout:mount()
   self.output:map('n', '<C-k>', function()
     self.input:focus()
   end, { noremap = true, silent = true })
+
+  self.input:map('n', 'q', function()
+    self.details:unmount()
+  end, { noremap = true, silent = true })
+
+  self.input:map('n', '<esc>', function()
+    self.details:unmount()
+  end, { noremap = true, silent = true })
 end
+
+local layout = SearchLayout()
+layout:mount()
 
 return SearchLayout

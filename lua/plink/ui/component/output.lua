@@ -1,12 +1,23 @@
 local event = require('nui.utils.autocmd').event
 local defaults = require('nui.utils').defaults
-local Layout = require('nui.layout')
-local BasePopup = require('plink.ui.component.popup')
-local Config = require('plink.config')
+-- local Layout = require('nui.layout')
+local Line = reload('plink.ui.component.line')
+local Text = reload('plink.ui.component.text')
+local BasePopup = reload('plink.ui.component.popup')
+local Config = reload('plink.config')
+local u = reload('plink.util')
+
+---@alias MoveDirection 'down' | 'up'
+
+---@param dir MoveDirection
+local function dir_to_num(dir)
+  return dir == 'up' and -1 or 1
+end
 
 local SearchOutput = BasePopup:extend('SearchOuput')
 
-local icon = ' '
+-- local icon = ' '
+vim.cmd([[sign define plink_active_line text= texthl=Pmenu]])
 
 function SearchOutput:init(options, layout_opts)
   options = defaults(options, Config.search_output)
@@ -20,40 +31,21 @@ function SearchOutput:init(options, layout_opts)
   }, options.buf_options or {})
 
   options.win_options = vim.tbl_deep_extend('keep', {
-    winhighlight = "Normal:NormalFloat,FloatBorder:FloatBorder,CursorLine:Visual",
+    winhighlight = "Normal:NormalFloat,FloatBorder:FloatBorder,CursorLine:NormalFloat",
     cursorline = true,
   }, options.win_options or {})
 
   SearchOutput.super.init(self, options, layout_opts)
 
+  self.active_line = 0
+  self.lines = {}
   self._.on_move_cursor = options.on_move_cursor
   self._on_select = options.on_select
 end
 
 function SearchOutput:set_active_line(lnum)
-  self:unlock_buf()
-  local prev_ok, prev = pcall(vim.api.nvim_buf_get_lines, self.bufnr, lnum - 2, lnum - 1, true)
-  if prev_ok and prev and #prev > 0 then
-    local line = prev[1]
-    if line:match(icon) then
-      line = line:gsub(icon, '  ')
-      pcall(vim.api.nvim_buf_set_lines, self.bufnr, lnum - 2, lnum - 1, true, { line })
-    end
-  end
-
-  local curr_line = vim.api.nvim_buf_get_lines(self.bufnr, lnum - 1, lnum, false)[1]
-  curr_line = curr_line:gsub('^%s+', icon)
-  pcall(vim.api.nvim_buf_set_lines, self.bufnr, lnum - 1, lnum, true, { curr_line })
-
-  local next_ok, next = pcall(vim.api.nvim_buf_get_lines, self.bufnr, lnum, lnum + 1, true)
-  if next_ok and next and #next > 0 then
-    local line = next[1]
-    if line:match(icon) then
-      line = line:gsub(icon, '  ')
-      pcall(vim.api.nvim_buf_set_lines, self.bufnr, lnum + 0, lnum + 1, true, { line })
-    end
-  end
-  self:lock_buf()
+  self.active_line = u.clamp(lnum, 1, #self.lines)
+  self:update()
 end
 
 function SearchOutput:mount()
@@ -91,18 +83,39 @@ function SearchOutput:mount()
     self:on_move_cursor()
   end)
 
-  self.line_count = 0
-
   SearchOutput.super.mount(self)
 end
 
+---@param lines string[]
 function SearchOutput:set_lines(lines)
-  vim.api.nvim_buf_set_lines(self.bufnr, 0, -1, false, lines)
-  self:set_active_line(1)
-  self.line_count = #lines
-  -- local title = 'Results 1 / ' .. #lines
-  -- self:set_title(title)
+  if not lines or #lines == 0 then
+    return
+  end
+
+  self.lines = {}
+  for _, text in ipairs(lines) do
+    local line = Line()
+    line:append(text)
+    table.insert(self.lines, line)
+  end
+
+  vim.api.nvim_buf_set_lines(self.bufnr, 0, -1, false, { '' })
   self.border:set_text('bottom', ' Lazy (L) ', 'center')
+  self:set_active_line(1)
+  self:update()
+end
+
+function SearchOutput:update()
+  self:unlock_buf()
+  for lnr, line in ipairs(self.lines) do
+    line:render(self.bufnr, self.ns_id, lnr)
+    if lnr == self.active_line then
+      line:set_line_highlight('Visual')
+      line:line_highlight(self.bufnr, self.ns_id, lnr)
+      vim.fn.sign_place(0, 'my_group', 'plink_active_line', self.bufnr, { lnum = lnr, priority = 10 })
+    end
+  end
+  self:lock_buf()
 end
 
 function SearchOutput:set_title(title)
@@ -119,6 +132,13 @@ function SearchOutput:on_select()
   if is_fun(on_select) then
     on_select(lnum)
   end
+end
+
+---@param dir MoveDirection
+function SearchOutput:move_selected(dir)
+  local delta = dir_to_num(dir)
+  self:set_active_line(self.active_line + delta)
+  return self.active_line
 end
 
 function SearchOutput:on_move_cursor()

@@ -67,15 +67,17 @@ function Details:init(options, layout_opts)
   end)
 end
 
+-- function Details:mount()
+--   Details.super.mount(self)
+--   local i = 0
+--   self:on(event.CursorMoved, function()
+--     i = i + 1
+--   end)
+-- end
+
 function Details:set_lines(lines)
   self:unlock_buf()
   vim.api.nvim_buf_set_lines(self.bufnr, 0, -1, false, { '' })
-  lines = _.map(function(line)
-    if type(line) == 'string' then
-      line = Line({ Text(line) })
-    end
-    return line
-  end, lines)
 
   for i, line in ipairs(lines) do
     line:render(self.bufnr, self.ns_id, i)
@@ -89,6 +91,7 @@ function Details:set_plugin(plugin)
   if plugin.url:match('github.com') then
     url_icon = ' '
   end
+
   local lines = {
     Line({ Text(' ' .. plugin.name, 'PlinkTitle') }),
     Line({ Text(url_icon, 'PlinkTitle'), Text(plugin.url, 'PlinkTitleLink') }),
@@ -99,15 +102,24 @@ function Details:set_plugin(plugin)
   local winid = u.buf_get_win(self.bufnr)
   local width = vim.api.nvim_win_get_width(winid)
   for _, line in ipairs(part_text_to_width(plugin.description, width)) do
-    table.insert(lines, Line({ Text(line) }))
+    table.insert(lines, Line { Text(line) })
   end
 
-  table.insert(lines, Line({ Text('') }))
-  table.insert(lines, Line({ Text(' GitHub Stargazers', 'PlinkTitle'), Text(' ' .. plugin.stars) }))
-  table.insert(lines, Line({ Text('') }))
+  table.insert(lines, nil)
+  table.insert(lines, Line {
+    Text(' GitHub Stargazers', 'PlinkTitle'),
+    Text(' ' .. plugin.stars),
+  })
+  table.insert(lines, nil)
   table.insert(lines, Line({ Text('Tags', 'PlinkTitle') }))
   for _, tag in ipairs(plugin.tags) do
-    table.insert(lines, Line({ Text('- ' .. tag) }))
+    table.insert(lines, Line { Text('- ' .. tag) })
+  end
+
+  for i = 1, #lines do
+    if lines[i] == nil then
+      lines[i] = Line({ Text('') })
+    end
   end
 
   self:set_lines(lines)
