@@ -141,6 +141,10 @@ end
 
 ---@param dir MoveDirection
 function SearchOutput:move_selected(dir)
+  if type(dir) ~= 'string' then
+    return
+  end
+
   local delta = dir_to_num(dir)
   self:set_active_line(self.active_line + delta)
 

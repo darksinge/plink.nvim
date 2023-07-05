@@ -59,16 +59,10 @@ function SearchLayout:init(opts)
   end
 
   input_opts.on_move_cursor = function(direction)
-    if type(direction) ~= 'string' then
-      return
-    end
-
     local lnr = self.output:move_selected(direction)
-    if self.plugins and lnr then
-      local plugin = self.plugins[lnr]
-      if plugin then
-        self.details:set_plugin(plugin)
-      end
+    local plugin = lnr and self.plugins and self.plugins[lnr] or nil
+    if plugin then
+      self.details:set_plugin(plugin)
     end
   end
 
