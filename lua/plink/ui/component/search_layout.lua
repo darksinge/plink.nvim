@@ -50,10 +50,10 @@ function SearchLayout:init(opts)
         self.output:set_lines(lines)
         self.details:set_plugin(plugins[1])
         self.input:stop_spinner()
+        self.input.output = self.output
+        self.input:on_move_cursor(nil)
 
-        self.input:stopinsert(function()
-          self:update()
-        end)
+        self:update()
       end)
     end
   end

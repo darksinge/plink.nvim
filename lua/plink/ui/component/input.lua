@@ -126,27 +126,43 @@ function SearchInput:mount()
   })
 
   vim.api.nvim_command('startinsert!')
-  vim.fn.sign_place(0, 'plink-search', 'plink-search', self.bufnr, { lnum = 1, priority = 10 })
+  vim.fn.sign_place(0, 'plink-search', 'plink-search', self.bufnr, { lnum = 1, priority = 100 })
 end
 
+local i = 0
 ---@param direction 'up' | 'down' | nil
 function SearchInput:on_move_cursor(direction)
   if self._.on_move_cursor then
     self._.on_move_cursor(direction)
   end
+
+  if self.extmark then
+    vim.api.nvim_buf_del_extmark(self.bufnr, Config.namespace_id, self.extmark)
+  end
+
+  if self.output then
+    self.extmark = vim.api.nvim_buf_set_extmark(self.bufnr, Config.namespace_id, 0, -1, {
+      virt_text = {
+        { '' .. self.output.active_line .. ' / ' .. #self.output.lines, 'MsgArea' },
+      },
+      virt_text_pos = 'right_align',
+    })
+  end
 end
 
 function SearchInput:toggle_placeholder()
-  require('illuminate').pause_buf()
-  local bufnr = self.bufnr
-  local ns_id = self.ns_id
-  local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+  local has_illuminate, illuminate = pcall(require, 'illuminate')
+  if has_illuminate then
+    illuminate.pause_buf()
+  end
+
+  local lines = vim.api.nvim_buf_get_lines(self.bufnr, 0, -1, false)
   local text = table.concat(lines, '\n')
-  if self.extmark then
-    vim.api.nvim_buf_del_extmark(bufnr, ns_id, self.extmark)
+  if self.extmark_id then
+    vim.api.nvim_buf_del_extmark(self.bufnr, self.ns_id, self.extmark_id)
   end
   if #text == 0 then
-    self.extmark = vim.api.nvim_buf_set_extmark(bufnr, ns_id, 0, -1, {
+    local ok, extmark_id = vim.api.nvim_buf_set_extmark(self.bufnr, self.ns_id, 0, -1, {
       virt_text = {
         {
           'Search phrase...',
@@ -155,6 +171,7 @@ function SearchInput:toggle_placeholder()
       },
       virt_text_pos = 'overlay',
     })
+    self.extmark_id = ok and extmark_id or nil
   end
 end
 
