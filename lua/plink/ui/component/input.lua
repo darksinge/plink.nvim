@@ -8,17 +8,6 @@ local Config = reload('plink.config')
 
 vim.cmd([[sign define plink-search text= texthl=Pmenu]])
 
-local function patch_cursor_position(target_cursor, force)
-  local cursor = vim.api.nvim_win_get_cursor(0)
-  if target_cursor[2] == cursor[2] and force then
-    -- didn't exit insert mode yet, but it's gonna
-    vim.api.nvim_win_set_cursor(0, { cursor[1], cursor[2] + 1 })
-  elseif target_cursor[2] - 1 == cursor[2] then
-    -- already exited insert mode
-    vim.api.nvim_win_set_cursor(0, { cursor[1], cursor[2] + 1 })
-  end
-end
-
 local SearchInput = BasePopup:extend('SearchInput')
 
 function SearchInput:init(options, layout_opts)
@@ -52,45 +41,22 @@ function SearchInput:init(options, layout_opts)
   self.input_props = props
 
   props.on_submit = function(value)
-    local target_cursor = vim.api.nvim_win_get_cursor(self._.position.win)
-
-    local prompt_normal_mode = vim.fn.mode() == 'n'
-
-    vim.schedule(function()
-      if prompt_normal_mode then
-        -- NOTE: on prompt-buffer normal mode <CR> causes neovim to enter insert mode.
-        --  ref: https://github.com/neovim/neovim/blob/d8f5f4d09078/src/nvim/normal.c#L5327-L5333
-        vim.api.nvim_command('stopinsert')
-      end
-
-      if not self._.disable_cursor_position_patch then
-        patch_cursor_position(target_cursor, prompt_normal_mode)
-      end
-
-      if options.on_submit then
-        options.on_submit(value)
-      end
-    end)
+    self:stopinsert()
+    if options.on_submit then
+      options.on_submit(value)
+    end
   end
 
   props.on_close = function()
-    local target_cursor = vim.api.nvim_win_get_cursor(self._.position.win)
-
     self:unmount()
 
-    vim.schedule(function()
-      if vim.fn.mode() == 'i' then
-        vim.api.nvim_command('stopinsert')
-      end
-
-      if not self._.disable_cursor_position_patch then
-        patch_cursor_position(target_cursor)
-      end
-
-      if options.on_close then
+    if vim.fn.mode() == 'i' then
+      self:stopinsert(options.on_close)
+    elseif options.on_close then
+      vim.schedule(function()
         options.on_close()
-      end
-    end)
+      end)
+    end
   end
 
   if options.on_change then
@@ -138,18 +104,6 @@ function SearchInput:mount()
   self:on(event.CursorMoved, function()
     self:on_move_cursor()
   end)
-
-  self:map('i', '<cr>', function()
-    local lines = vim.api.nvim_buf_get_lines(self.bufnr, 0, -1, false)
-    local value = table.concat(lines, '\n')
-    props.on_submit(value)
-  end, { noremap = true })
-
-  self:map('n', '<cr>', function()
-    local lines = vim.api.nvim_buf_get_lines(self.bufnr, 0, -1, false)
-    local value = table.concat(lines, '\n')
-    props.on_submit(value)
-  end, { noremap = true })
 
   self:map('n', 'k', function()
     self:on_move_cursor('up')

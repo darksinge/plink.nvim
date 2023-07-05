@@ -6,6 +6,17 @@ local Layout = require('nui.layout')
 local u = reload('plink.util')
 local nvim = reload('plink.nvim-api')
 
+local function patch_cursor_position(target_cursor, force)
+  local cursor = vim.api.nvim_win_get_cursor(0)
+  if target_cursor[2] == cursor[2] and force then
+    -- didn't exit insert mode yet, but it's gonna
+    vim.api.nvim_win_set_cursor(0, { cursor[1], cursor[2] + 1 })
+  elseif target_cursor[2] - 1 == cursor[2] then
+    -- already exited insert mode
+    vim.api.nvim_win_set_cursor(0, { cursor[1], cursor[2] + 1 })
+  end
+end
+
 local BasePopup = Popup:extend('BasePopup')
 
 function BasePopup:init(opts, layout_opts)
@@ -63,6 +74,24 @@ end
 function BasePopup:unlock_buf()
   vim.api.nvim_buf_set_option(self.bufnr, 'modifiable', true)
   vim.api.nvim_buf_set_option(self.bufnr, 'readonly', false)
+end
+
+function BasePopup:stopinsert(callback)
+  local target_cursor = vim.api.nvim_win_get_cursor(self._.position.win)
+
+  local prompt_normal_mode = vim.fn.mode() == 'n'
+
+  vim.schedule(function()
+    vim.api.nvim_command('stopinsert')
+
+    if not self._.disable_cursor_position_patch then
+      patch_cursor_position(target_cursor, prompt_normal_mode)
+    end
+
+    if type(callback) == 'function' then
+      callback()
+    end
+  end)
 end
 
 return BasePopup

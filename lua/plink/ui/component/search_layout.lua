@@ -51,31 +51,15 @@ function SearchLayout:init(opts)
         self.details:set_plugin(plugins[1])
         self.input:stop_spinner()
 
-        vim.api.nvim_command('stopinsert')
-        self:update()
+        self.input:stopinsert(function()
+          self:update()
+        end)
       end)
     end
   end
 
-  -- input_opts.on_submit = function(value)
-  --   vim.api.nvim_command('stopinsert')
-  --   self.input:start_spinner()
-  --   search.fake_search(value, function(plugins)
-  --     self.plugins = plugins
-  --     if not plugins then
-  --       self.input:stop_spinner()
-  --       return
-  --     end
-  --     local lines = _.map(function(plugin) return plugin.name end, plugins)
-  --     self.output:set_lines(lines)
-  --     self.details:set_plugin(plugins[1])
-  --     self.input:stop_spinner()
-  --     self:update()
-  --   end)
-  -- end
-
   input_opts.on_move_cursor = function(direction)
-    if not type(direction) == 'string' then
+    if type(direction) ~= 'string' then
       return
     end
 
