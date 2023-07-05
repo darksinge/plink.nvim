@@ -118,6 +118,11 @@ function SearchInput:mount()
 
   SearchInput.super.mount(self)
 
+  local cmp_ok, cmp = pcall(require, 'cmp')
+  if cmp_ok then
+    pcall(cmp.setup.buffer, { enabled = false })
+  end
+
   if props.on_change then
     vim.api.nvim_buf_attach(self.bufnr, false, {
       on_lines = props.on_change,

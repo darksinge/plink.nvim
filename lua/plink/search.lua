@@ -5,16 +5,11 @@ local log = reload 'plink.log'
 
 local M = {}
 
-local DELAY = 500
+local DELAY = 250
 local TRACE_PREFIX = '#plink'
 
-local search_async = async.wrap(function(query, callback)
-  callback(M.search(query))
-end, 2)
-
-local async_runner, timer = util.debounce(search_async, DELAY)
-
-local base_url = 'https://3051j7te1j.execute-api.us-east-1.amazonaws.com'
+local search_async = async.wrap(api.search_job, 2)
+local search_async_debounced, debounce_timer = util.debounce(search_async, DELAY)
 
 ---@generic T : any
 ---@param query string
@@ -22,11 +17,14 @@ local base_url = 'https://3051j7te1j.execute-api.us-east-1.amazonaws.com'
 ---@return nil
 M.search_async = function(query, handler)
   log.trace('search_async = ' .. query)
-  if type(query) ~= 'string' then
-    return nil
+  if type(query) ~= 'string' or #query <= 2 then
+    return
   end
 
-  api.search_job(query, handler)
+  search_async_debounced(query, function(results)
+    debounce_timer:stop()
+    handler(results)
+  end)
 end
 
 ---@param query string

@@ -34,6 +34,14 @@ function BasePopup:mount()
   end)
 end
 
+---@return integer|nil
+function BasePopup:get_winid()
+  local winid = u.buf_get_win(self.bufnr)
+  if winid and vim.api.nvim_win_is_valid(winid) then
+    return winid
+  end
+end
+
 function BasePopup:unmount()
   local winid = self.previous_winid
   BasePopup.super.unmount(self)

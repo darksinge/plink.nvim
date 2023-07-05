@@ -6,7 +6,7 @@ local Line = require('nui.line')
 local Text = require('nui.text')
 local BasePopup = require('plink.ui.component.popup')
 local Config = require('plink.config')
-local u = require('plink.util')
+local u = reload('plink.util')
 
 local Details = BasePopup:extend('Details')
 

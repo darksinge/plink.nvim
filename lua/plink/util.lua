@@ -117,7 +117,10 @@ end
 ---@param max number | nil
 function M.clamp(n, min, max)
   if min and max then
-    assert(min <= max)
+    local tmp = math.min(min, max)
+    max = math.max(min, max)
+    min = tmp
+    assert(min <= max, 'expected ' .. min .. ' to be <= ' .. max)
   end
 
   if min and n < min then

@@ -44,6 +44,11 @@ function SearchOutput:init(options, layout_opts)
 end
 
 function SearchOutput:set_active_line(lnum)
+  if lnum < 1 then
+    lnum = #self.lines - lnum
+  elseif lnum > #self.lines then
+    lnum = lnum - #self.lines
+  end
   self.active_line = u.clamp(lnum, 1, #self.lines)
   self:update()
 end
@@ -61,22 +66,19 @@ function SearchOutput:mount()
   end, { silent = true, noremap = true })
 
   self:on(event.BufEnter, function()
+    self:lock_buf()
     vim.cmd([[set termguicolors]])
     vim.cmd([[hi Cursor blend=100]])
     vim.cmd([[set guicursor+=a:Cursor/lCursor]])
-
-    self:lock_buf()
   end)
 
   self:on(event.BufLeave, function()
+    self:unlock_buf()
     if termguicolors_prev == false then
       vim.cmd([[set notermguicolors]])
     end
-
     vim.cmd('hi Cursor blend=' .. blend_prev)
     vim.cmd('set guicursor=' .. guicursor_prev)
-
-    self:unlock_buf()
   end)
 
   self:on(event.CursorMoved, function()
@@ -99,6 +101,7 @@ function SearchOutput:set_lines(lines)
     table.insert(self.lines, line)
   end
 
+  self:unlock_buf()
   vim.api.nvim_buf_set_lines(self.bufnr, 0, -1, false, { '' })
   self.border:set_text('bottom', ' Lazy (L) ', 'center')
   self:set_active_line(1)
@@ -107,6 +110,7 @@ end
 
 function SearchOutput:update()
   self:unlock_buf()
+
   for lnr, line in ipairs(self.lines) do
     line:render(self.bufnr, self.ns_id, lnr)
     if lnr == self.active_line then
@@ -115,6 +119,7 @@ function SearchOutput:update()
       vim.fn.sign_place(0, 'my_group', 'plink_active_line', self.bufnr, { lnum = lnr, priority = 10 })
     end
   end
+
   self:lock_buf()
 end
 
@@ -138,6 +143,12 @@ end
 function SearchOutput:move_selected(dir)
   local delta = dir_to_num(dir)
   self:set_active_line(self.active_line + delta)
+
+  local winid = self:get_winid()
+  vim.api.nvim_win_call(winid, function()
+    vim.cmd([[normal! ]] .. self.active_line .. 'gg')
+  end)
+
   return self.active_line
 end
 

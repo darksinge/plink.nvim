@@ -17,7 +17,7 @@ function M.defaults()
       position = "50%",
       size = {
         width = '33%',
-        height = "90%",
+        height = "75%",
         min_width = 60,
         max_width = 200,
       },
