@@ -1,12 +1,19 @@
+local plink = require('plink')
+
+-- plink.setup({
+--   install_behavior = {
+--     path = '~/.config/lvim/lua/user/plugins.lua',
+--     distro = 'lvim',
+--   }
+-- })
+
 local Layout = require('nui.layout')
 local defaults = require('nui.utils').defaults
-local event = require('nui.utils.autocmd').event
 local search = reload('plink.search')
 local Config = reload('plink.config')
 local Input = reload('plink.ui.component.input')
-local Output = reload('plink.ui.component.output')
+local SearchOutput = reload('plink.ui.component.output')
 local Details = reload('plink.ui.component.details')
-local BasePopup = reload('plink.ui.component.popup')
 local util = reload('plink.util')
 local _ = require('neodash')
 
@@ -45,9 +52,7 @@ function SearchLayout:init(opts)
           return
         end
 
-        local lines = _.map(function(plugin) return plugin.name end, plugins)
-
-        self.output:set_lines(lines)
+        self.output:display_search_results(plugins)
         self.details:set_plugin(plugins[1])
         self.input:stop_spinner()
         self.input.output = self.output
@@ -75,6 +80,15 @@ function SearchLayout:init(opts)
 
   local input_layout_opts = input_opts.layout
   input_opts.layout = nil
+  input_opts.on_select = function()
+    local linenr = self.output.active_line
+    local plugin = self.plugins[linenr]
+    if plugin and plugin.name and plink.on_install then
+      self:unmount()
+      plink.on_install(plugin.name)
+    end
+  end
+
   self.input = Input(input_opts, input_layout_opts)
   self.input.active = true
   self.input.hidden = false
@@ -91,13 +105,14 @@ function SearchLayout:init(opts)
     end
   end
 
-  output_opts.on_select = function(_)
-    self:set_active(self.details)
-  end
+  -- output_opts.on_select = function(_)
+  --   self:set_active(self.details)
+  -- end
 
-  self.output = Output(output_opts, output_layout_opts)
+  self.output = SearchOutput(output_opts, output_layout_opts)
   self.output.active = false
   self.output.hidden = false
+  self.output:display_installed()
 
   self.layout_opts = defaults(opts.search_layout, Config.options.search_layout)
   if self.layout_opts.size then

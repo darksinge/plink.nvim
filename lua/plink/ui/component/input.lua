@@ -8,6 +8,14 @@ local Config = reload('plink.config')
 
 vim.cmd([[sign define plink-search text= texthl=Pmenu]])
 
+local function del_extmark(bufnr, nsid, extid)
+  return pcall(vim.api.nvim_buf_del_extmark, bufnr, nsid, extid)
+end
+
+local function set_extmark(bufnr, nsid, line, col, opts)
+  return pcall(vim.api.nvim_buf_set_extmark, bufnr, nsid, line, col, opts)
+end
+
 local SearchInput = BasePopup:extend('SearchInput')
 
 function SearchInput:init(options, layout_opts)
@@ -31,6 +39,7 @@ function SearchInput:init(options, layout_opts)
   self._.default_value = defaults(options.default_value, '')
   self._.prompt = Text(defaults(options.prompt, ''))
   self._.disable_cursor_position_patch = defaults(options.disable_cursor_position_patch, false)
+  self._.on_select = options.on_select
 
   self.spinner = Spinner:new(vim.schedule_wrap(function(state)
     self:display_input_suffix(state)
@@ -113,6 +122,16 @@ function SearchInput:mount()
     self:on_move_cursor('down')
   end, { noremap = true })
 
+  self:map('n', '<cr>', function()
+    if self._.on_select then
+      self._.on_select()
+    end
+  end, { noremap = true })
+
+  self:map('i', '<cr>', function()
+    -- noop
+  end, { noremap = true })
+
   self:toggle_placeholder()
   vim.api.nvim_buf_attach(self.bufnr, false, {
     on_lines = function()
@@ -129,25 +148,34 @@ function SearchInput:mount()
   vim.fn.sign_place(0, 'plink-search', 'plink-search', self.bufnr, { lnum = 1, priority = 100 })
 end
 
-local i = 0
+function SearchInput:set_extmark(opts)
+  if self.extmark_id then
+    del_extmark(self.bufnr, Config.namespace_id, self.extmark_id)
+  end
+
+  if opts then
+    local ok, extmark_id = set_extmark(self.bufnr, Config.namespace_id, 0, -1, opts)
+    self.extmark_id = ok and extmark_id or nil
+  end
+end
+
 ---@param direction 'up' | 'down' | nil
 function SearchInput:on_move_cursor(direction)
   if self._.on_move_cursor then
     self._.on_move_cursor(direction)
   end
 
-  if self.extmark then
-    vim.api.nvim_buf_del_extmark(self.bufnr, Config.namespace_id, self.extmark)
-  end
-
+  local opts = nil
   if self.output then
-    self.extmark = vim.api.nvim_buf_set_extmark(self.bufnr, Config.namespace_id, 0, -1, {
+    opts = {
       virt_text = {
         { '' .. self.output.active_line .. ' / ' .. #self.output.lines, 'MsgArea' },
       },
       virt_text_pos = 'right_align',
-    })
+    }
   end
+
+  self:set_extmark(opts)
 end
 
 function SearchInput:toggle_placeholder()
@@ -158,11 +186,10 @@ function SearchInput:toggle_placeholder()
 
   local lines = vim.api.nvim_buf_get_lines(self.bufnr, 0, -1, false)
   local text = table.concat(lines, '\n')
-  if self.extmark_id then
-    vim.api.nvim_buf_del_extmark(self.bufnr, self.ns_id, self.extmark_id)
-  end
+
+  local opts = nil
   if #text == 0 then
-    local ok, extmark_id = vim.api.nvim_buf_set_extmark(self.bufnr, self.ns_id, 0, -1, {
+    opts = {
       virt_text = {
         {
           'Search phrase...',
@@ -170,9 +197,10 @@ function SearchInput:toggle_placeholder()
         },
       },
       virt_text_pos = 'overlay',
-    })
-    self.extmark_id = ok and extmark_id or nil
+    }
   end
+
+  self:set_extmark(opts)
 end
 
 function SearchInput:start_spinner()
@@ -190,21 +218,10 @@ function SearchInput:stop_spinner()
   end)
 end
 
-local function nvim_buf_del_extmark(bufnr, nsid, extid)
-  return pcall(vim.api.nvim_buf_del_extmark, bufnr, nsid, extid)
-end
-
-local function nvim_buf_set_extmark(bufnr, nsid, line, col, opts)
-  return pcall(vim.api.nvim_buf_set_extmark, bufnr, nsid, line, col, opts)
-end
-
 function SearchInput:display_input_suffix(suffix)
-  if self.extmark_id then
-    nvim_buf_del_extmark(self.bufnr, Config.namespace_id, self.extmark_id)
-  end
-
+  local opts = nil
   if suffix then
-    local ok, extmark_id = nvim_buf_set_extmark(self.bufnr, Config.namespace_id, 0, -1, {
+    opts = {
       virt_text = {
         { "",        "PlinkLoadingPillEdge" },
         { "" .. suffix, "PlinkLoadingPillCenter" },
@@ -212,10 +229,9 @@ function SearchInput:display_input_suffix(suffix)
         { " ",          "" },
       },
       virt_text_pos = "right_align",
-    })
-
-    self.extmark_id = ok and extmark_id or nil
+    }
   end
+  self:set_extmark(opts)
 end
 
 return SearchInput

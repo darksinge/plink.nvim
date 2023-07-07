@@ -20,6 +20,11 @@ end
 local BasePopup = Popup:extend('BasePopup')
 
 function BasePopup:init(opts, layout_opts)
+  opts.border = vim.tbl_deep_extend('keep', opts.border or {}, {
+    style = 'rounded',
+    text = { top = '', top_align = 'center' },
+  })
+
   self.previous_winid = vim.api.nvim_get_current_win()
   self.hidden = opts.hidden or true
   self.active = opts.active or false
@@ -91,6 +96,17 @@ function BasePopup:stopinsert(callback)
     if type(callback) == 'function' then
       callback()
     end
+  end)
+end
+
+---@param title string
+---@param opts { edge?: 'top'|'bottom', align?: 'left'|'right'|'center'}?
+function BasePopup:set_title(title, opts)
+  local edge = opts and opts.edge or 'top'
+  local align = opts and opts.align or 'center'
+  -- pcall(self.border.set_text, self.border, edge, title, align)
+  vim.schedule(function()
+    self.border:set_text(edge, title, align)
   end)
 end
 

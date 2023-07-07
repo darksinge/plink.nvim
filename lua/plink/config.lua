@@ -2,6 +2,11 @@ local M = {}
 
 function M.defaults()
   local defaults = {
+    install_behavior = {
+      enabled = true,
+      path = '~/.config/nvim/init.lua',
+      distro = nil,
+    },
     keymaps = {
       close = "<leader>pc",
       force_close = "<leader>px",
@@ -47,13 +52,6 @@ function M.defaults()
       },
     },
     search_output = {
-      border = {
-        style = 'rounded',
-        text = {
-          top = "Results",
-          top_align = "center",
-        },
-      },
       layout = {
         grow = 1,
       },
@@ -91,9 +89,11 @@ function M.setup(options)
 
   vim.api.nvim_set_hl(0, "PlinkLoadingPillCenter", { fg = "#ffffff", bg = "#444444", default = true })
   vim.api.nvim_set_hl(0, "PlinkLoadingPillEdge", { fg = "#444444", default = true })
+
+  return M.options
 end
 
--- TODO: Remove this call to setup() eventually, it should be done by the user
-M.setup()
+-- -- TODO: Remove this call to setup() eventually, it should be done by the user
+-- M.setup()
 
 return M

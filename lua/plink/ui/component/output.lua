@@ -1,3 +1,5 @@
+local plink = require('plink')
+local _ = require('neodash')
 local event = require('nui.utils.autocmd').event
 local defaults = require('nui.utils').defaults
 -- local Layout = require('nui.layout')
@@ -6,6 +8,7 @@ local Text = reload('plink.ui.component.text')
 local BasePopup = reload('plink.ui.component.popup')
 local Config = reload('plink.config')
 local u = reload('plink.util')
+local icons = reload('plink.ui.icons')
 
 ---@alias MoveDirection 'down' | 'up'
 
@@ -14,10 +17,9 @@ local function dir_to_num(dir)
   return dir == 'up' and -1 or 1
 end
 
-local SearchOutput = BasePopup:extend('SearchOuput')
+vim.cmd('sign define plink_active_line text=' .. icons.select_arrow .. ' texthl=Pmenu')
 
--- local icon = ' '
-vim.cmd([[sign define plink_active_line text= texthl=Pmenu]])
+local SearchOutput = BasePopup:extend('SearchOuput')
 
 function SearchOutput:init(options, layout_opts)
   options = defaults(options, Config.search_output)
@@ -37,6 +39,8 @@ function SearchOutput:init(options, layout_opts)
 
   SearchOutput.super.init(self, options, layout_opts)
 
+  ---@type string[]
+  self.installed_plugins = {}
   self.active_line = 0
   self.lines = {}
   self._.on_move_cursor = options.on_move_cursor
@@ -59,9 +63,7 @@ function SearchOutput:mount()
   local termguicolors_prev = vim.api.nvim_get_option_value('termguicolors', { scope = 'global' })
   local guicursor_prev = vim.api.nvim_get_option_value('guicursor', { scope = 'global' })
 
-  self:map('n', 'L', ':Lazy<cr>', { silent = true, noremap = true })
-
-  self:map('n', '<cr>', function()
+  self:map('n', '<space>', function()
     self:on_select()
   end, { silent = true, noremap = true })
 
@@ -79,10 +81,6 @@ function SearchOutput:mount()
     end
     vim.cmd('hi Cursor blend=' .. blend_prev)
     vim.cmd('set guicursor=' .. guicursor_prev)
-  end)
-
-  self:on(event.CursorMoved, function()
-    self:on_move_cursor()
   end)
 
   SearchOutput.super.mount(self)
@@ -103,7 +101,6 @@ function SearchOutput:set_lines(lines)
 
   self:unlock_buf()
   vim.api.nvim_buf_set_lines(self.bufnr, 0, -1, false, { '' })
-  self.border:set_text('bottom', ' Lazy (L) ', 'center')
   self:set_active_line(1)
   self:update()
 end
@@ -111,6 +108,7 @@ end
 function SearchOutput:update()
   self:unlock_buf()
 
+  -- self.border:set_text('top', 'Pluginsss', 'center')
   for lnr, line in ipairs(self.lines) do
     line:render(self.bufnr, self.ns_id, lnr)
     if lnr == self.active_line then
@@ -123,16 +121,13 @@ function SearchOutput:update()
   self:lock_buf()
 end
 
-function SearchOutput:set_title(title)
-  pcall(self.border.set_text, self.border, 'top', title, 'center')
-end
-
 local function is_fun(fn)
   return type(fn) == 'function'
 end
 
 function SearchOutput:on_select()
   local lnum = vim.api.nvim_win_get_cursor(0)[1]
+
   local on_select = self._on_select
   if is_fun(on_select) then
     on_select(lnum)
@@ -156,17 +151,52 @@ function SearchOutput:move_selected(dir)
   return self.active_line
 end
 
-function SearchOutput:on_move_cursor()
-  local lnum = vim.api.nvim_win_get_cursor(0)[1]
-  self:set_active_line(lnum)
+-- function SearchOutput:set_installed()
+-- end
 
-  -- local title = '1 / ' .. self.line_count
-  -- self:set_title(title)
-
-  local on_move_cursor = self._.on_move_cursor
-  if is_fun(on_move_cursor) then
-    on_move_cursor(lnum)
+function SearchOutput:display_installed()
+  local plugins = vim.deepcopy(plink.plugins)
+  if not plugins then
+    return
   end
+
+  local lines = {}
+  for _, plugin in ipairs(plugins) do
+    if type(plugin) == 'string' then
+      table.insert(lines, icons.checkbox .. ' ' .. plugin)
+    end
+
+    -- if type(plugin) == 'string' then
+    --   P(plugin)
+    -- end
+    -- local config = {}
+    -- for k, v in pairs(plugin) do
+    --   local t = type(v)
+    --   if type(k) == 'number' then
+    --     config.name = v
+    --   elseif t == 'string' then
+    --     config[k] = v
+    --   elseif type(v) == 'function' then
+    --     config[k] = '<function>'
+    --   end
+    -- end
+    -- local json_ok, json = pcall(vim.fn.json_encode, config)
+    -- if json_ok then
+    --   -- P(json)
+    -- end
+  end
+
+  self:set_title('Installed Plugins')
+  self:set_lines(lines)
+end
+
+function SearchOutput:display_search_results(plugins)
+  local lines = _.map(function(plugin)
+    return plugin.name
+  end, plugins)
+
+  self:set_title('Search Results')
+  self:set_lines(lines)
 end
 
 return SearchOutput

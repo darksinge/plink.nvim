@@ -7,6 +7,7 @@ local Text = require('nui.text')
 local BasePopup = require('plink.ui.component.popup')
 local Config = require('plink.config')
 local u = reload('plink.util')
+local icons = reload('plink.ui.icons')
 
 local Details = BasePopup:extend('Details')
 
@@ -87,31 +88,29 @@ end
 
 ---@param plugin Plugin
 function Details:set_plugin(plugin)
-  local url_icon = ' '
-  if plugin.url:match('github.com') then
-    url_icon = ' '
-  end
+  local url_icon = plugin.url:match('github.com') and icons.github or icons.url
 
   local lines = {
-    Line({ Text(' ' .. plugin.name, 'PlinkTitle') }),
-    Line({ Text(url_icon, 'PlinkTitle'), Text(plugin.url, 'PlinkTitleLink') }),
+    Line({ Text(icons.package_fancy .. ' ' .. plugin.name, 'PlinkTitle') }),
+    Line({ Text(url_icon .. ' ', 'PlinkTitle'), Text(plugin.url, 'PlinkTitleLink') }),
     Line({ Text('') }),
-    Line({ Text(' Description', 'PlinkTitle') }),
+    Line({ Text(icons.sparkles_fancy .. ' Description', 'PlinkTitle') }),
   }
 
   local winid = u.buf_get_win(self.bufnr)
   local width = vim.api.nvim_win_get_width(winid)
   for _, line in ipairs(part_text_to_width(plugin.description, width)) do
-    table.insert(lines, Line { Text(line) })
+    table.insert(lines, Line({ Text(line) }))
   end
 
-  table.insert(lines, nil)
+  table.insert(lines, Line({ Text('') }))
+
   table.insert(lines, Line {
-    Text(' GitHub Stargazers', 'PlinkTitle'),
+    Text(icons.star_fancy .. ' Stargazers', 'PlinkTitle'),
     Text(' ' .. plugin.stars),
   })
-  table.insert(lines, nil)
-  table.insert(lines, Line({ Text('Tags', 'PlinkTitle') }))
+  table.insert(lines, Line({ Text('') }))
+  table.insert(lines, Line({ Text(icons.lightning_fancy .. ' Tags', 'PlinkTitle') }))
   for _, tag in ipairs(plugin.tags) do
     table.insert(lines, Line { Text('- ' .. tag) })
   end
