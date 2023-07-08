@@ -10,6 +10,11 @@ local function config_highlights()
   vim.api.nvim_set_hl(0, "PlinkLoadingPillEdge", { fg = "#444444", default = true })
 end
 
+local function config_signs()
+  vim.fn.sign_define('multiprompt_sign', { text = ' ', texthl = 'LineNr', numhl = 'LineNr' })
+  vim.fn.sign_define('singleprompt_sign', { text = ' ', texthl = 'LineNr', numhl = 'LineNr' })
+end
+
 local function config_install_behavior()
   local conf = M.options.install_behavior
   if type(conf.path) == 'string' then
@@ -125,6 +130,7 @@ function M.setup(opts)
   M.options = vim.tbl_deep_extend("force", {}, M.defaults(), opts)
   config_install_behavior()
   config_highlights()
+  config_signs()
   return M.options
 end
 

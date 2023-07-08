@@ -119,18 +119,9 @@ function SearchOutput:update()
   self:lock_buf()
 end
 
-local function is_fun(fn)
-  return type(fn) == 'function'
-end
-
 function SearchOutput:on_select()
   local lnum = vim.api.nvim_win_get_cursor(0)[1]
-  SearchOutput.super.on_select(self)
-
-  local on_select = self._on_select
-  if is_fun(on_select) then
-    on_select(lnum)
-  end
+  SearchOutput.super.on_select(self, lnum)
 end
 
 ---@param dir MoveDirection
@@ -150,39 +141,12 @@ function SearchOutput:move_selected(dir)
   return self.active_line
 end
 
--- function SearchOutput:set_installed()
--- end
-
-function SearchOutput:display_installed()
-  local plugins = vim.deepcopy(Config.options.install_behavior.plugins)
-  if not plugins then
-    return
-  end
-
+function SearchOutput:display_installed(plugins)
   local lines = {}
   for _, plugin in ipairs(plugins) do
     if type(plugin) == 'string' then
       table.insert(lines, icons.checkbox .. ' ' .. plugin)
     end
-
-    -- if type(plugin) == 'string' then
-    --   P(plugin)
-    -- end
-    -- local config = {}
-    -- for k, v in pairs(plugin) do
-    --   local t = type(v)
-    --   if type(k) == 'number' then
-    --     config.name = v
-    --   elseif t == 'string' then
-    --     config[k] = v
-    --   elseif type(v) == 'function' then
-    --     config[k] = '<function>'
-    --   end
-    -- end
-    -- local json_ok, json = pcall(vim.fn.json_encode, config)
-    -- if json_ok then
-    --   -- P(json)
-    -- end
   end
 
   self:set_title('Installed Plugins')

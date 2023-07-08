@@ -19,11 +19,10 @@ end
 local SearchInput = BasePopup:extend('SearchInput')
 
 ---@class SearchInput: BasePopup
+---@field start_spinner fun(): nil
+---@field stop_spinner fun(): nil
 function SearchInput:init(options)
   local layout_opts = options.layout
-  -- vim.fn.sign_define('multiprompt_sign', { text = ' ', texthl = 'LineNr', numhl = 'LineNr' })
-  -- vim.fn.sign_define('singleprompt_sign', { text = ' ', texthl = 'LineNr', numhl = 'LineNr' })
-
   if not is_type('boolean', options.enter) then
     options.enter = true
   end
@@ -36,6 +35,10 @@ function SearchInput:init(options)
   options.win_options = defaults(options.win_options, {})
   options.size.height = defaults(options.size.height, 1)
 
+  self.spinner = Spinner:new(vim.schedule_wrap(function(state)
+    self:display_input_suffix(state)
+  end), { animation_type_name = 'points' })
+
   SearchInput.super.init(self, options, layout_opts)
 
   self._.default_value = defaults(options.default_value, '')
@@ -43,43 +46,31 @@ function SearchInput:init(options)
   self._.disable_cursor_position_patch = defaults(options.disable_cursor_position_patch, false)
   self._.on_select = options.on_select
 
-  self.spinner = Spinner:new(vim.schedule_wrap(function(state)
-    self:display_input_suffix(state)
-  end), { animation_type_name = 'points' })
-
   local props = {}
 
   self.input_props = props
 
-  props.on_submit = function(value)
-    self:stopinsert()
-    if options.on_submit then
-      options.on_submit(value)
-    end
-  end
 
-  props.on_close = function()
-    self:unmount()
+  -- props.on_close = function()
+  --   self:unmount()
 
-    if vim.fn.mode() == 'i' then
-      self:stopinsert(options.on_close)
-    elseif options.on_close then
-      vim.schedule(function()
-        options.on_close()
-      end)
-    end
-  end
+  --   if vim.fn.mode() == 'i' then
+  --     self:stopinsert(options.on_close)
+  --   elseif options.on_close then
+  --     vim.schedule(function()
+  --       options.on_close()
+  --     end)
+  --   end
+  -- end
 
-  if options.on_change then
-    local bufnr = self.bufnr
-    props.on_change = function()
-      local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-      -- vim.fn.sign_place(0, 'my_group', 'singleprompt_sign', bufnr, { lnum = 1, priority = 10 })
-      options.on_change(table.concat(lines, '\n'))
-    end
-  end
-
-  self._.on_move_cursor = options.on_move_cursor
+  -- if options.on_change then
+  --   local bufnr = self.bufnr
+  --   props.on_change = function()
+  --     local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+  --     -- vim.fn.sign_place(0, 'my_group', 'singleprompt_sign', bufnr, { lnum = 1, priority = 10 })
+  --     options.on_change(table.concat(lines, '\n'))
+  --   end
+  -- end
 end
 
 function SearchInput:set_lines(start_idx, end_idx, strict_indexing, lines)
@@ -90,6 +81,25 @@ function SearchInput:set_lines(start_idx, end_idx, strict_indexing, lines)
   end
 end
 
+function SearchInput:on_change(value)
+  vim.fn.sign_place(0, 'my_group', 'singleprompt_sign', self.bufnr, {
+    lnum = 1,
+    priority = 10,
+  })
+  SearchInput.super.on_change(self, value)
+end
+
+function SearchInput:on_submit(value)
+  self:stopinsert()
+  SearchInput.super.on_submit(self, value)
+end
+
+function SearchInput:on_close()
+  self:stopinsert(vim.schedule_wrap(function()
+    SearchInput.super.on_close(self)
+  end))
+end
+
 function SearchInput:mount()
   local props = self.input_props
 
@@ -98,12 +108,6 @@ function SearchInput:mount()
   local cmp_ok, cmp = pcall(require, 'cmp')
   if cmp_ok then
     pcall(cmp.setup.buffer, { enabled = false })
-  end
-
-  if props.on_change then
-    vim.api.nvim_buf_attach(self.bufnr, false, {
-      on_lines = props.on_change,
-    })
   end
 
   if #self._.default_value then
@@ -125,9 +129,7 @@ function SearchInput:mount()
   end, { noremap = true })
 
   self:map('n', '<cr>', function()
-    if self._.on_select then
-      self._.on_select()
-    end
+    self:on_select()
   end, { noremap = true })
 
   self:map('i', '<cr>', function()
@@ -135,14 +137,12 @@ function SearchInput:mount()
   end, { noremap = true })
 
   self:toggle_placeholder()
+
   vim.api.nvim_buf_attach(self.bufnr, false, {
     on_lines = function()
       self:toggle_placeholder()
-      if not self.loading and props.on_change then
-        local lines = vim.api.nvim_buf_get_lines(self.bufnr, 0, -1, false)
-        local text = table.concat(lines, '\n')
-        props.on_change(text)
-      end
+      local lines = vim.api.nvim_buf_get_lines(self.bufnr, 0, -1, false)
+      self:on_change(table.concat(lines, '\n'))
     end,
   })
 

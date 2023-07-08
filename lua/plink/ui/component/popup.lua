@@ -7,13 +7,14 @@ local Layout = require('nui.layout')
 local u = reload('plink.util')
 local nvim = reload('plink.nvim-api')
 
----@alias PopupEvent 'on_select'|'on_move_cursor'|'on_focus'
+---@alias PopupEvent 'on_select'|'on_move_cursor'|'on_focus'|'on_change'|'on_close'
 
 local PopupEvents = {
   on_select = 'on_select',
   on_move_cursor = 'on_move_cursor',
   on_focus = 'on_focus',
   on_change = 'on_change',
+  on_close = 'on_close',
 }
 
 local function patch_cursor_position(target_cursor, force)
@@ -28,6 +29,10 @@ local function patch_cursor_position(target_cursor, force)
 end
 
 local function handle_event(popup, event, ...)
+  local handlers = popup._.event_handlers[event]
+  if not handlers then
+    return
+  end
   for _, handler in ipairs(popup._.event_handlers[event]) do
     pcall(handler.call, ...)
   end
@@ -41,6 +46,7 @@ local BasePopup = Popup:extend('BasePopup')
 ---@field hiiden boolean
 ---@field active boolean
 ---@field layout Layout
+---@field on_move_cursor fun(self: BasePopup, direction?: string): nil
 function BasePopup:init(opts, layout_opts)
   opts.border = vim.tbl_deep_extend('keep', opts.border or {}, {
     style = 'rounded',
@@ -106,20 +112,21 @@ function BasePopup:unlock_buf()
 end
 
 function BasePopup:stopinsert(callback)
+  local mode = vim.fn.mode()
+
+  if mode == 'i' then
+    return pcall(callback)
+  end
+
   local target_cursor = vim.api.nvim_win_get_cursor(self._.position.win)
-
-  local prompt_normal_mode = vim.fn.mode() == 'n'
-
   vim.schedule(function()
     vim.api.nvim_command('stopinsert')
 
     if not self._.disable_cursor_position_patch then
-      patch_cursor_position(target_cursor, prompt_normal_mode)
+      patch_cursor_position(target_cursor, mode == 'n')
     end
 
-    if type(callback) == 'function' then
-      callback()
-    end
+    pcall(callback)
   end)
 end
 
@@ -175,6 +182,21 @@ end
 
 function BasePopup:on_change(...)
   handle_event(self, PopupEvents.on_change, ...)
+end
+
+function BasePopup:on_close(...)
+  local args = table.pack(...)
+  vim.schedule(function()
+    handle_event(self, PopupEvents.on_close, table.unpack(args))
+    self:unmount()
+  end)
+end
+
+function BasePopup:_handle_event(event, ...)
+  if not self._.event_handlers[event] then
+    u.raise('no "' .. event .. '" events have been registered for this component')
+  end
+  handle_event(self, event, ...)
 end
 
 return BasePopup

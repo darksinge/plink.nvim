@@ -33,7 +33,32 @@ function SearchLayout:init(opts)
   self.previous_winid = vim.api.nvim_get_current_win()
 
   local input_opts = defaults(opts.search_input, Config.options.search_input)
-  input_opts.on_change = function(value)
+
+  local search_details = defaults(opts.search_details, Config.options.search_details)
+  local search_details_layout_opts = search_details.layout
+  self.details = Details(search_details, search_details_layout_opts)
+
+  ---@type SearchInput
+  self.input = Input(input_opts)
+  self.input:register_handler('on_focus', function()
+    local linenr = self.output.active_line
+    ---@type Plugin
+    local plugin = self.plugins[linenr]
+    if plugin and plugin.name and Config.options.install_behavior.on_install then
+      self:unmount()
+      Config.options.install_behavior.on_install(plugin.name)
+    end
+  end)
+
+  self.input:register_handler('on_move_cursor', function(direction)
+    local lnr = self.output:move_selected(direction)
+    local plugin = lnr and self.plugins and self.plugins[lnr] or nil
+    if plugin then
+      self.details:set_plugin(plugin)
+    end
+  end)
+
+  self.input:register_handler('on_change', function(value)
     if value and #value >= 3 then
       self.input:start_spinner()
       search.search_async(value, function(plugins)
@@ -53,43 +78,20 @@ function SearchLayout:init(opts)
         self:update()
       end)
     end
-  end
+  end)
 
-  input_opts.on_move_cursor = function(direction)
-    local lnr = self.output:move_selected(direction)
-    local plugin = lnr and self.plugins and self.plugins[lnr] or nil
-    if plugin then
-      self.details:set_plugin(plugin)
-    end
-  end
-
-  local search_details = defaults(opts.search_details, Config.options.search_details)
-  local search_details_layout_opts = search_details.layout
-  self.details = Details(search_details, search_details_layout_opts)
-
-  ---@type SearchInput
-  self.input = Input(input_opts)
-  self.input:register_handler('on_focus', function()
+  self.input:register_handler('on_select', function()
     local linenr = self.output.active_line
+    ---@type Plugin
     local plugin = self.plugins[linenr]
     if plugin and plugin.name and Config.options.install_behavior.on_install then
       self:unmount()
       Config.options.install_behavior.on_install(plugin.name)
     end
   end)
-
-  self.input:register_handler('on_move_cursor', function(direction)
-    local lnr = self.output:move_selected(direction)
-    local plugin = lnr and self.plugins and self.plugins[lnr] or nil
-    if plugin then
-      self.details:set_plugin(plugin)
-    end
-  end)
-
   local output_opts = defaults(opts.search_output, Config.options.search_output)
 
   self.output = SearchOutput(output_opts)
-  self.output:display_installed()
   self.output:register_handler('on_move_cursor', function()
     if self.plugins then
       local plugin = self.plugins[self.output.active_line]
@@ -141,6 +143,7 @@ function SearchLayout:set_active(component)
 end
 
 function SearchLayout:mount()
+  self.output:display_installed()
   SearchLayout.super.mount(self)
 
   local map_opts = { noremap = true, silent = true }
