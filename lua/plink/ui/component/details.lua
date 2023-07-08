@@ -47,34 +47,28 @@ local function part_text_to_width(text, width)
   return lines
 end
 
-function Details:init(options, layout_opts)
-  options = defaults(options, Config.search_details)
-  options.enter = false
-  options.focusable = false
+function Details:init(opts)
+  local layout_opts = opts.layout
 
-  options.buf_options = vim.tbl_deep_extend('keep', {
+  opts = defaults(opts, Config.search_details)
+  opts.enter = false
+  opts.focusable = false
+
+  opts.buf_options = vim.tbl_deep_extend('keep', {
     modifiable = true,
     readonly = false,
-  }, options.buf_options or {})
+  }, opts.buf_options or {})
 
-  options.win_options = vim.tbl_deep_extend('keep', {
+  opts.win_options = vim.tbl_deep_extend('keep', {
     cursorline = false,
-  }, options.win_options or {})
+  }, opts.win_options or {})
 
-  Details.super.init(self, options, layout_opts)
+  Details.super.init(self, opts, layout_opts)
 
   self:on(event.BufEnter, function()
     self:lock_buf()
   end)
 end
-
--- function Details:mount()
---   Details.super.mount(self)
---   local i = 0
---   self:on(event.CursorMoved, function()
---     i = i + 1
---   end)
--- end
 
 function Details:set_lines(lines)
   self:unlock_buf()
@@ -86,7 +80,7 @@ function Details:set_lines(lines)
   self:lock_buf()
 end
 
----@param plugin Plugin
+---@param plugin PluginResult
 function Details:set_plugin(plugin)
   local url_icon = plugin.url:match('github.com') and icons.github or icons.url
 

@@ -1,10 +1,20 @@
-local event = require('nui.utils.autocmd').event
+local _ = require('neodash')
+local Event = require('nui.utils.autocmd').event
 local Popup = require('nui.popup')
 local defaults = require('nui.utils').defaults
 local Config = require('plink.config')
 local Layout = require('nui.layout')
 local u = reload('plink.util')
 local nvim = reload('plink.nvim-api')
+
+---@alias PopupEvent 'on_select'|'on_move_cursor'|'on_focus'
+
+local PopupEvents = {
+  on_select = 'on_select',
+  on_move_cursor = 'on_move_cursor',
+  on_focus = 'on_focus',
+  on_change = 'on_change',
+}
 
 local function patch_cursor_position(target_cursor, force)
   local cursor = vim.api.nvim_win_get_cursor(0)
@@ -17,8 +27,20 @@ local function patch_cursor_position(target_cursor, force)
   end
 end
 
+local function handle_event(popup, event, ...)
+  for _, handler in ipairs(popup._.event_handlers[event]) do
+    pcall(handler.call, ...)
+  end
+end
+
 local BasePopup = Popup:extend('BasePopup')
 
+---@class BasePopup
+---@field register_handler fun(self: BasePopup, event: PopupEvent, fn: fun(...): nil)
+---@field previous_winid integer
+---@field hiiden boolean
+---@field active boolean
+---@field layout Layout
 function BasePopup:init(opts, layout_opts)
   opts.border = vim.tbl_deep_extend('keep', opts.border or {}, {
     style = 'rounded',
@@ -30,6 +52,7 @@ function BasePopup:init(opts, layout_opts)
   self.active = opts.active or false
   self.layout = Layout.Box(self, layout_opts)
   BasePopup.super.init(self, opts)
+  self._.event_handlers = {}
 end
 
 function BasePopup:is_buf_exists()
@@ -39,7 +62,7 @@ end
 function BasePopup:mount()
   BasePopup.super.mount(self)
 
-  self:on(event.BufEnter, function()
+  self:on(Event.BufEnter, function()
     local ok, illuminate = pcall(require, 'illuminate')
     if ok then
       illuminate.pause_buf()
@@ -69,6 +92,7 @@ function BasePopup:focus()
   if winid and vim.api.nvim_win_is_valid(winid) then
     vim.api.nvim_set_current_win(winid)
   end
+  self:on_focus()
 end
 
 function BasePopup:lock_buf()
@@ -108,6 +132,49 @@ function BasePopup:set_title(title, opts)
   vim.schedule(function()
     self.border:set_text(edge, title, align)
   end)
+end
+
+local _handler_id = 0
+
+---@param event PopupEvent
+---@param fn fun(...): nil
+function BasePopup:register_handler(event, fn)
+  if type(self._.event_handlers[event]) ~= 'table' then
+    self._.event_handlers[event] = {}
+  end
+
+  local id = _handler_id
+  _handler_id = _handler_id + 1
+  table.insert(self._.event_handlers[event], {
+    id = id,
+    event = event,
+    call = fn,
+  })
+
+  return function()
+    for i, handler in ipairs(self._.event_handlers[event]) do
+      if handler.id == id then
+        table.remove(self._.event_handlers[event], i)
+        break
+      end
+    end
+  end
+end
+
+function BasePopup:on_focus(...)
+  handle_event(self, PopupEvents.on_focus, ...)
+end
+
+function BasePopup:on_select(...)
+  handle_event(self, PopupEvents.on_select, ...)
+end
+
+function BasePopup:on_move_cursor(...)
+  handle_event(self, PopupEvents.on_move_cursor, ...)
+end
+
+function BasePopup:on_change(...)
+  handle_event(self, PopupEvents.on_change, ...)
 end
 
 return BasePopup

@@ -48,7 +48,7 @@ function SearchLayout:init(opts)
         self.details:set_plugin(plugins[1])
         self.input:stop_spinner()
         self.input.output = self.output
-        self.input:on_move_cursor(nil)
+        self.input:on_move_cursor()
 
         self:update()
       end)
@@ -65,46 +65,39 @@ function SearchLayout:init(opts)
 
   local search_details = defaults(opts.search_details, Config.options.search_details)
   local search_details_layout_opts = search_details.layout
-  search_details.layout = nil
   self.details = Details(search_details, search_details_layout_opts)
-  self.details.active = false
-  self.details.hidden = false
 
-  local input_layout_opts = input_opts.layout
-  input_opts.layout = nil
-  input_opts.on_select = function()
+  ---@type SearchInput
+  self.input = Input(input_opts)
+  self.input:register_handler('on_focus', function()
     local linenr = self.output.active_line
     local plugin = self.plugins[linenr]
     if plugin and plugin.name and Config.options.install_behavior.on_install then
       self:unmount()
       Config.options.install_behavior.on_install(plugin.name)
     end
-  end
+  end)
 
-  self.input = Input(input_opts, input_layout_opts)
-  self.input.active = true
-  self.input.hidden = false
+  self.input:register_handler('on_move_cursor', function(direction)
+    local lnr = self.output:move_selected(direction)
+    local plugin = lnr and self.plugins and self.plugins[lnr] or nil
+    if plugin then
+      self.details:set_plugin(plugin)
+    end
+  end)
 
   local output_opts = defaults(opts.search_output, Config.options.search_output)
-  local output_layout_opts = output_opts.layout
-  output_opts.layout = nil
-  output_opts.on_move_cursor = function(row)
-    if self.plugins and row then
-      local plugin = self.plugins[row]
+
+  self.output = SearchOutput(output_opts)
+  self.output:display_installed()
+  self.output:register_handler('on_move_cursor', function()
+    if self.plugins then
+      local plugin = self.plugins[self.output.active_line]
       if plugin then
         self.details:set_plugin(plugin)
       end
     end
-  end
-
-  -- output_opts.on_select = function(_)
-  --   self:set_active(self.details)
-  -- end
-
-  self.output = SearchOutput(output_opts, output_layout_opts)
-  self.output.active = false
-  self.output.hidden = false
-  self.output:display_installed()
+  end)
 
   self.layout_opts = defaults(opts.search_layout, Config.options.search_layout)
   if self.layout_opts.size then

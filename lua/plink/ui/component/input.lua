@@ -18,7 +18,9 @@ end
 
 local SearchInput = BasePopup:extend('SearchInput')
 
-function SearchInput:init(options, layout_opts)
+---@class SearchInput: BasePopup
+function SearchInput:init(options)
+  local layout_opts = options.layout
   -- vim.fn.sign_define('multiprompt_sign', { text = ' ', texthl = 'LineNr', numhl = 'LineNr' })
   -- vim.fn.sign_define('singleprompt_sign', { text = ' ', texthl = 'LineNr', numhl = 'LineNr' })
 
@@ -161,10 +163,6 @@ end
 
 ---@param direction 'up' | 'down' | nil
 function SearchInput:on_move_cursor(direction)
-  if self._.on_move_cursor then
-    self._.on_move_cursor(direction)
-  end
-
   local opts = nil
   if self.output then
     opts = {
@@ -174,8 +172,9 @@ function SearchInput:on_move_cursor(direction)
       virt_text_pos = 'right_align',
     }
   end
-
   self:set_extmark(opts)
+
+  SearchInput.super.on_move_cursor(self, direction)
 end
 
 function SearchInput:toggle_placeholder()

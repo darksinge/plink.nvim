@@ -134,4 +134,9 @@ function M.clamp(n, min, max)
   return n
 end
 
+function M.raise(msg, level)
+  level = level or vim.log.levels.ERROR
+  error('ERROR(plink.nvim) ' .. msg, level)
+end
+
 return M

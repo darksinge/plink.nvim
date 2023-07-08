@@ -20,7 +20,8 @@ vim.cmd('sign define plink_active_line text=' .. icons.select_arrow .. ' texthl=
 
 local SearchOutput = BasePopup:extend('SearchOuput')
 
-function SearchOutput:init(options, layout_opts)
+function SearchOutput:init(options)
+  local layout_opts = options.layout
   options = defaults(options, Config.search_output)
   options.enter = false
   options.focusable = false
@@ -42,8 +43,6 @@ function SearchOutput:init(options, layout_opts)
   self.installed_plugins = {}
   self.active_line = 0
   self.lines = {}
-  self._.on_move_cursor = options.on_move_cursor
-  self._on_select = options.on_select
 end
 
 function SearchOutput:set_active_line(lnum)
@@ -126,6 +125,7 @@ end
 
 function SearchOutput:on_select()
   local lnum = vim.api.nvim_win_get_cursor(0)[1]
+  SearchOutput.super.on_select(self)
 
   local on_select = self._on_select
   if is_fun(on_select) then
