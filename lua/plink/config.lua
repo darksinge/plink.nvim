@@ -1,11 +1,49 @@
+local loaders = reload('plink.plugin-loaders')
+local Path = require('plenary.path')
+
 local M = {}
 
+vim.cmd([[sign define plink-search text= texthl=Pmenu]])
+
+local function config_highlights()
+  vim.api.nvim_set_hl(0, "PlinkLoadingPillCenter", { fg = "#ffffff", bg = "#444444", default = true })
+  vim.api.nvim_set_hl(0, "PlinkLoadingPillEdge", { fg = "#444444", default = true })
+end
+
+local function config_install_behavior()
+  local conf = M.options.install_behavior
+  if type(conf.path) == 'string' then
+    conf.path = vim.fn.expand(conf.path)
+  end
+
+  if conf.distro and loaders[conf.distro] then
+    conf.plugins = loaders[conf.distro]()
+  end
+
+  M.options.install_behavior = conf
+end
+
+local function on_install(plugin)
+  local path = Path:new(M.options.install_behavior.path)
+  if not path:is_file() then
+    return
+  end
+
+  vim.schedule(function()
+    vim.fn.setreg('+', '{ "' .. plugin .. '" }')
+    vim.notify('config for ' .. plugin .. ' copied to clipboard')
+    vim.cmd('edit ' .. path.filename)
+  end)
+end
+
 function M.defaults()
-  local defaults = {
+  return {
     install_behavior = {
       enabled = true,
-      path = '~/.config/nvim/init.lua',
+      path = nil,
       distro = nil,
+      plugins = {},
+      on_install = on_install
     },
     keymaps = {
       close = "<leader>pc",
@@ -20,6 +58,7 @@ function M.defaults()
     },
     search_layout = {
       position = "50%",
+      -- relative = 'editor',
       size = {
         width = '33%',
         height = "75%",
@@ -75,25 +114,26 @@ function M.defaults()
       },
     }
   }
-  return defaults
 end
 
-M.options = M.defaults()
+M.options = {}
 
 M.namespace_id = vim.api.nvim_create_namespace("PlinkNS")
 
-function M.setup(options)
-  options = options or {}
-
-  M.options = vim.tbl_deep_extend("force", {}, M.defaults(), options)
-
-  vim.api.nvim_set_hl(0, "PlinkLoadingPillCenter", { fg = "#ffffff", bg = "#444444", default = true })
-  vim.api.nvim_set_hl(0, "PlinkLoadingPillEdge", { fg = "#444444", default = true })
-
+function M.setup(opts)
+  opts = opts or {}
+  M.options = vim.tbl_deep_extend("force", {}, M.defaults(), opts)
+  config_install_behavior()
+  config_highlights()
   return M.options
 end
 
--- -- TODO: Remove this call to setup() eventually, it should be done by the user
--- M.setup()
+-- TODO: Remove this
+M.setup({
+  install_behavior = {
+    path = '~/.config/lvim/lua/user/plugins.lua',
+    distro = 'lvim',
+  }
+})
 
 return M

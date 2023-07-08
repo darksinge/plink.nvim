@@ -1,12 +1,3 @@
-local plink = require('plink')
-
--- plink.setup({
---   install_behavior = {
---     path = '~/.config/lvim/lua/user/plugins.lua',
---     distro = 'lvim',
---   }
--- })
-
 local Layout = require('nui.layout')
 local defaults = require('nui.utils').defaults
 local search = reload('plink.search')
@@ -37,8 +28,9 @@ local function calc_width(size)
 end
 
 function SearchLayout:init(opts)
-  self.previous_winid = vim.api.nvim_get_current_win()
   opts = opts or {}
+
+  self.previous_winid = vim.api.nvim_get_current_win()
 
   local input_opts = defaults(opts.search_input, Config.options.search_input)
   input_opts.on_change = function(value)
@@ -83,9 +75,9 @@ function SearchLayout:init(opts)
   input_opts.on_select = function()
     local linenr = self.output.active_line
     local plugin = self.plugins[linenr]
-    if plugin and plugin.name and plink.on_install then
+    if plugin and plugin.name and Config.options.install_behavior.on_install then
       self:unmount()
-      plink.on_install(plugin.name)
+      Config.options.install_behavior.on_install(plugin.name)
     end
   end
 

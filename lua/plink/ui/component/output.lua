@@ -1,4 +1,3 @@
-local plink = require('plink')
 local _ = require('neodash')
 local event = require('nui.utils.autocmd').event
 local defaults = require('nui.utils').defaults
@@ -155,7 +154,7 @@ end
 -- end
 
 function SearchOutput:display_installed()
-  local plugins = vim.deepcopy(plink.plugins)
+  local plugins = vim.deepcopy(Config.options.install_behavior.plugins)
   if not plugins then
     return
   end
