@@ -6,25 +6,6 @@ local M = {}
 
 local layout = nil
 
-function M.force_close()
-  if not layout then
-    return
-  end
-
-  local did_unmount = pcall(layout.unmount, layout)
-  if did_unmount then
-    return
-  end
-
-  for _, winid in ipairs(nvim.tabpage.list_wins(0)) do
-    if nvim.win.is_valid(winid) then
-      local var_ok, is_plink_component = pcall(nvim.win.get_var, winid, 'is_plink_window')
-      if var_ok and is_plink_component == true then
-        pcall(nvim.win.close, winid, true)
-      end
-    end
-  end
-end
 
 function M.open()
   if not layout then

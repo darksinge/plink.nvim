@@ -21,8 +21,8 @@ local function config_install_behavior()
     conf.path = vim.fn.expand(conf.path)
   end
 
-  if conf.distro and loaders[conf.distro] then
-    conf.plugins = loaders[conf.distro]()
+  if conf.plugin_manager and loaders[conf.plugin_manager] then
+    conf.plugins = loaders[conf.plugin_manager]()
   end
 
   M.options.install_behavior = conf
@@ -46,7 +46,7 @@ function M.defaults()
     install_behavior = {
       enabled = true,
       path = nil,
-      distro = nil,
+      plugin_manager = nil,
       plugins = {},
       on_install = on_install
     },
@@ -80,6 +80,7 @@ function M.defaults()
       },
       size = {
         width = "100%",
+        -- height = 10,
       },
       border = {
         style = 'rounded',
@@ -90,8 +91,8 @@ function M.defaults()
       },
       layout = {
         size = {
-          height = 3,
           width = '100%',
+          height = 3,
         },
       },
     },
@@ -138,7 +139,7 @@ end
 M.setup({
   install_behavior = {
     path = '~/.config/lvim/lua/user/plugins.lua',
-    distro = 'lvim',
+    plugin_manager = 'lvim',
   }
 })
 

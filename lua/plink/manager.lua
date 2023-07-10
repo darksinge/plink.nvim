@@ -15,9 +15,6 @@ local loaders = reload('plink.plugin-loaders')
 ---@field plugin_loader? fun(manager: Manager): Plugin[]
 ---@field config_path? string
 
----@class ManagerState
----@field plugins table<string, Plugin>
-
 ---@return PluginManager | nil
 local function try_find_plugin_manager()
   if pcall(require, 'lazy') then
@@ -49,16 +46,16 @@ end
 ---@field install_behavior InstallBehavior
 ---@field plugin_manager? PluginManager
 ---@field plugin_loader? fun(manager: Manager): Plugin[]
----@field state ManagerState
+---@field plugins table<string, Plugin>
 local Manager = Object("PlinkManager")
 
 ---@param opts ManagerOpts
 function Manager:init(opts)
-  self.state = { plugins = {} }
+  self.plugins = {}
   self.config_path = opts.config_path
   self.install_behavior = vim.tbl_deep_extend('keep', opts.install_behavior or {}, get_default_install_behavior())
   self.plugin_manager = opts.plugin_manager or try_find_plugin_manager()
-  self.plugin_loader = opts.plugin_loader or self.plugin_manager and loaders[self.plugin_manager] or nil
+  self.plugin_loader = opts.plugin_loader or loaders[self.plugin_manager]
 end
 
 function Manager:load_plugin_list()
@@ -67,9 +64,17 @@ function Manager:load_plugin_list()
   end
 
   ---@type Plugin[]
-  local plugins = self.plugin_loader(self)
-  for _, plugin in ipairs(plugins) do
-    self.state.plugins[plugin.name] = plugin
+  self.plugins = {}
+  local plugin_names = {}
+  local plugins_keyed_by_name = {}
+  for _, plugin in ipairs(self.plugin_loader(self)) do
+    table.insert(plugin_names, string.lower(plugin.name))
+    plugins_keyed_by_name[string.lower(plugin.name)] = plugin
+  end
+  table.sort(plugin_names)
+
+  for _, name in ipairs(plugin_names) do
+    table.insert(self.plugins, plugins_keyed_by_name[string.lower(name)])
   end
 end
 

@@ -142,6 +142,9 @@ function SearchOutput:move_selected(dir)
 end
 
 function SearchOutput:display_installed(plugins)
+  if not plugins then
+    return
+  end
   local lines = {}
   for _, plugin in ipairs(plugins) do
     if type(plugin) == 'string' then

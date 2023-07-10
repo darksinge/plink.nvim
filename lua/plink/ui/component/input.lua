@@ -95,9 +95,8 @@ function SearchInput:on_submit(value)
 end
 
 function SearchInput:on_close()
-  self:stopinsert(vim.schedule_wrap(function()
-    SearchInput.super.on_close(self)
-  end))
+  self:stopinsert()
+  SearchInput.super.on_close(self)
 end
 
 function SearchInput:mount()

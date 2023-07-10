@@ -117,8 +117,6 @@ function SearchLayout:init(opts)
   end
 
   local inner_layout_opts = self.layout_opts.inner_layout
-  self.layout_opts.inner_layout = nil
-
   self.inner_layout = Layout.Box({
     self.details.layout,
     self.input.layout,
@@ -143,7 +141,6 @@ function SearchLayout:set_active(component)
 end
 
 function SearchLayout:mount()
-  self.output:display_installed()
   SearchLayout.super.mount(self)
 
   local map_opts = { noremap = true, silent = true }
@@ -164,7 +161,7 @@ function SearchLayout:mount()
   end, map_opts)
 end
 
-local layout = SearchLayout()
-layout:mount()
+-- local layout = SearchLayout()
+-- layout:mount()
 
 return SearchLayout

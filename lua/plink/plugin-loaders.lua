@@ -11,7 +11,7 @@ local function raise_not_implemented(distro)
 end
 
 ---@return Plugin[]
-function M.from_lazy()
+function M.lazy()
   local has_lazy, lazy = pcall(require, 'lazy')
   if not has_lazy then
     e.raise('lazy.nvim not installed')
@@ -19,17 +19,31 @@ function M.from_lazy()
 
   local plugins = {}
   for _, plugin in ipairs(lazy.plugins()) do
-    table.insert(plugins, {
-      name = plugin[1],
-      installed = plugin.installed,
-      enabled = plugin.enabled,
-    })
+    local name = plugin[1] or plugin.name
+    local installed = plugin.installed or plugin._.installed or true
+    local is_local = plugin.is_local or plugin._.is_local or false
+    local enabled = plugin.enabled or plugin._.enabled or true
+
+    local dir = nil
+    if is_local then
+      dir = plugin.dir or plugin._.dir
+    end
+
+    if type(name) == 'string' then
+      table.insert(plugins, {
+        name = name,
+        installed = installed,
+        enabled = enabled,
+        dir = dir,
+        is_local = is_local,
+      })
+    end
   end
   return plugins
 end
 
 ---@return Plugin[]
-function M.from_packer()
+function M.packer()
   e.raise_not_implemented('#from_packer() not implemented')
 
   local has_packer, _ = pcall(require, 'packer')
@@ -59,7 +73,7 @@ end
 
 ---@return Plugin[]
 function M.lvim()
-  return M.from_lazy()
+  return M.lazy()
 end
 
 return M
