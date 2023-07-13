@@ -1,4 +1,5 @@
 local _ = require('neodash')
+local __ = require("nui.utils")._
 local event = require('nui.utils.autocmd').event
 local defaults = require('nui.utils').defaults
 -- local Layout = require('nui.layout')
@@ -84,23 +85,43 @@ function SearchOutput:mount()
   SearchOutput.super.mount(self)
 end
 
----@param lines string[]
+---@param lines {text: string, stars: number}[] | string[]
 function SearchOutput:set_lines(lines)
   if not lines or #lines == 0 then
     return
   end
 
   self.lines = {}
-  for _, text in ipairs(lines) do
+  for _, item in ipairs(lines) do
     local line = Line()
-    line:append(text)
+    if type(item) == 'string' then
+      line:append(item)
+    else
+      line:append(item.text)
+    end
+
     table.insert(self.lines, line)
   end
 
   self:unlock_buf()
   vim.api.nvim_buf_set_lines(self.bufnr, 0, -1, false, { '' })
+
   self:set_active_line(1)
   self:update()
+
+  for i, item in ipairs(lines) do
+    if not item.stars then
+      break
+    end
+
+    -- FIXME: The stars displayed by this disappear after moving the cursor
+    vim.api.nvim_buf_set_extmark(self.bufnr, __.ensure_namespace_id(self.ns_id), i - 1, 0, {
+      virt_text = {
+        { icons.star .. ' ' .. item.stars, 'MsgArea' },
+      },
+      virt_text_pos = 'right_align',
+    })
+  end
 end
 
 function SearchOutput:update()
@@ -158,7 +179,11 @@ end
 
 function SearchOutput:display_search_results(plugins)
   local lines = _.map(function(plugin)
-    return plugin.name
+    -- return plugin.name .. ' (' .. icons.star .. ' ' .. plugin.stars .. ')'
+    return {
+      text = plugin.name,
+      stars = plugin.stars,
+    }
   end, plugins)
 
   self:set_title('Search Results')

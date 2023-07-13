@@ -1,4 +1,5 @@
 local NuiText = require('nui.text')
+local _ = require("nui.utils")._
 
 ---@class Text
 local Text = NuiText:extend('Text')
