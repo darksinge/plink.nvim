@@ -1,14 +1,28 @@
+local _ = require('neodash')
+local __ = require("nui.utils")._
 local event = require('nui.utils.autocmd').event
 local defaults = require('nui.utils').defaults
-local Layout = require('nui.layout')
+-- local Layout = require('nui.layout')
+local Line = require('plink.ui.component.line')
+local Text = require('plink.ui.component.text')
 local BasePopup = require('plink.ui.component.popup')
 local Config = require('plink.config')
+local u = require('plink.util')
+local icons = require('plink.ui.icons')
+
+---@alias MoveDirection 'down' | 'up'
+
+---@param dir MoveDirection
+local function dir_to_num(dir)
+  return dir == 'up' and -1 or 1
+end
+
+vim.cmd('sign define plink_active_line text=' .. icons.select_arrow .. ' texthl=Pmenu')
 
 local SearchOutput = BasePopup:extend('SearchOuput')
 
-local icon = ' '
-
-function SearchOutput:init(options, layout_opts)
+function SearchOutput:init(options)
+  local layout_opts = options.layout
   options = defaults(options, Config.search_output)
   options.enter = false
   options.focusable = false
@@ -20,40 +34,26 @@ function SearchOutput:init(options, layout_opts)
   }, options.buf_options or {})
 
   options.win_options = vim.tbl_deep_extend('keep', {
-    winhighlight = "Normal:NormalFloat,FloatBorder:FloatBorder,CursorLine:Visual",
+    winhighlight = "Normal:NormalFloat,FloatBorder:FloatBorder,CursorLine:NormalFloat",
     cursorline = true,
   }, options.win_options or {})
 
   SearchOutput.super.init(self, options, layout_opts)
 
-  self._.on_move_cursor = options.on_move_cursor
-  self._on_select = options.on_select
+  ---@type string[]
+  self.installed_plugins = {}
+  self.active_line = 0
+  self.lines = {}
 end
 
 function SearchOutput:set_active_line(lnum)
-  self:unlock_buf()
-  local prev_ok, prev = pcall(vim.api.nvim_buf_get_lines, self.bufnr, lnum - 2, lnum - 1, true)
-  if prev_ok and prev and #prev > 0 then
-    local line = prev[1]
-    if line:match(icon) then
-      line = line:gsub(icon, '  ')
-      pcall(vim.api.nvim_buf_set_lines, self.bufnr, lnum - 2, lnum - 1, true, { line })
-    end
+  if lnum < 1 then
+    lnum = #self.lines - lnum
+  elseif lnum > #self.lines then
+    lnum = lnum - #self.lines
   end
-
-  local curr_line = vim.api.nvim_buf_get_lines(self.bufnr, lnum - 1, lnum, false)[1]
-  curr_line = curr_line:gsub('^%s+', icon)
-  pcall(vim.api.nvim_buf_set_lines, self.bufnr, lnum - 1, lnum, true, { curr_line })
-
-  local next_ok, next = pcall(vim.api.nvim_buf_get_lines, self.bufnr, lnum, lnum + 1, true)
-  if next_ok and next and #next > 0 then
-    local line = next[1]
-    if line:match(icon) then
-      line = line:gsub(icon, '  ')
-      pcall(vim.api.nvim_buf_set_lines, self.bufnr, lnum + 0, lnum + 1, true, { line })
-    end
-  end
-  self:lock_buf()
+  self.active_line = u.clamp(lnum, 1, #self.lines)
+  self:update()
 end
 
 function SearchOutput:mount()
@@ -62,76 +62,132 @@ function SearchOutput:mount()
   local termguicolors_prev = vim.api.nvim_get_option_value('termguicolors', { scope = 'global' })
   local guicursor_prev = vim.api.nvim_get_option_value('guicursor', { scope = 'global' })
 
-  self:map('n', 'L', ':Lazy<cr>', { silent = true, noremap = true })
-
-  self:map('n', '<cr>', function()
+  self:map('n', '<space>', function()
     self:on_select()
   end, { silent = true, noremap = true })
 
   self:on(event.BufEnter, function()
+    self:lock_buf()
     vim.cmd([[set termguicolors]])
     vim.cmd([[hi Cursor blend=100]])
     vim.cmd([[set guicursor+=a:Cursor/lCursor]])
-
-    self:lock_buf()
   end)
 
   self:on(event.BufLeave, function()
+    self:unlock_buf()
     if termguicolors_prev == false then
       vim.cmd([[set notermguicolors]])
     end
-
     vim.cmd('hi Cursor blend=' .. blend_prev)
     vim.cmd('set guicursor=' .. guicursor_prev)
-
-    self:unlock_buf()
   end)
-
-  self:on(event.CursorMoved, function()
-    self:on_move_cursor()
-  end)
-
-  self.line_count = 0
 
   SearchOutput.super.mount(self)
 end
 
+---@param lines {text: string, stars: number}[] | string[]
 function SearchOutput:set_lines(lines)
-  vim.api.nvim_buf_set_lines(self.bufnr, 0, -1, false, lines)
+  if not lines or #lines == 0 then
+    return
+  end
+
+  self.lines = {}
+  for _, item in ipairs(lines) do
+    local line = Line()
+    if type(item) == 'string' then
+      line:append(item)
+    else
+      line:append(item.text)
+    end
+
+    table.insert(self.lines, line)
+  end
+
+  self:unlock_buf()
+  vim.api.nvim_buf_set_lines(self.bufnr, 0, -1, false, { '' })
+
   self:set_active_line(1)
-  self.line_count = #lines
-  -- local title = 'Results 1 / ' .. #lines
-  -- self:set_title(title)
-  self.border:set_text('bottom', ' Lazy (L) ', 'center')
+  self:update()
+
+  for i, item in ipairs(lines) do
+    if not item.stars then
+      break
+    end
+
+    -- FIXME: The stars displayed by this disappear after moving the cursor
+    vim.api.nvim_buf_set_extmark(self.bufnr, __.ensure_namespace_id(self.ns_id), i - 1, 0, {
+      virt_text = {
+        { icons.star .. ' ' .. item.stars, 'MsgArea' },
+      },
+      virt_text_pos = 'right_align',
+    })
+  end
 end
 
-function SearchOutput:set_title(title)
-  pcall(self.border.set_text, self.border, 'top', title, 'center')
-end
+function SearchOutput:update()
+  self:unlock_buf()
 
-local function is_fun(fn)
-  return type(fn) == 'function'
+  -- self.border:set_text('top', 'Pluginsss', 'center')
+  for lnr, line in ipairs(self.lines) do
+    line:render(self.bufnr, self.ns_id, lnr)
+    if lnr == self.active_line then
+      line:set_line_highlight('Visual')
+      line:line_highlight(self.bufnr, self.ns_id, lnr)
+      vim.fn.sign_place(0, 'my_group', 'plink_active_line', self.bufnr, { lnum = lnr, priority = 10 })
+    end
+  end
+
+  self:lock_buf()
 end
 
 function SearchOutput:on_select()
   local lnum = vim.api.nvim_win_get_cursor(0)[1]
-  local on_select = self._on_select
-  if is_fun(on_select) then
-    on_select(lnum)
-  end
+  SearchOutput.super.on_select(self, lnum)
 end
 
-function SearchOutput:on_move_cursor()
-  local lnum = vim.api.nvim_win_get_cursor(0)[1]
-  self:set_active_line(lnum)
-
-  -- local title = '1 / ' .. self.line_count
-  -- self:set_title(title)
-
-  local on_move_cursor = self._.on_move_cursor
-  if is_fun(on_move_cursor) then
-    on_move_cursor(lnum)
+---@param dir MoveDirection
+function SearchOutput:move_selected(dir)
+  if type(dir) ~= 'string' then
+    return
   end
+
+  local delta = dir_to_num(dir)
+  self:set_active_line(self.active_line + delta)
+
+  local winid = self:get_winid()
+  vim.api.nvim_win_call(winid, function()
+    vim.cmd([[normal! ]] .. self.active_line .. 'gg')
+  end)
+
+  return self.active_line
+end
+
+function SearchOutput:display_installed(plugins)
+  if not plugins then
+    return
+  end
+  local lines = {}
+  for _, plugin in ipairs(plugins) do
+    if type(plugin) == 'string' then
+      table.insert(lines, icons.checkbox .. ' ' .. plugin)
+    end
+  end
+
+  self:set_title('Installed Plugins')
+  self:set_lines(lines)
+end
+
+function SearchOutput:display_search_results(plugins)
+  local lines = _.map(function(plugin)
+    -- return plugin.name .. ' (' .. icons.star .. ' ' .. plugin.stars .. ')'
+    return {
+      text = plugin.name,
+      stars = plugin.stars,
+    }
+  end, plugins)
+
+  self:set_title('Search Results')
+  self:set_lines(lines)
 end
 
 return SearchOutput

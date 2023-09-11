@@ -6,7 +6,7 @@ if not curl_ok or not job_ok then
   return
 end
 
----@alias Plugin {description: string, name: string, score: number, stars: number, tags: string[], url: string}
+---@alias PluginResult {description: string, name: string, score: number, stars: number, tags: string[], url: string}
 
 local base_url = 'https://3051j7te1j.execute-api.us-east-1.amazonaws.com'
 
@@ -31,7 +31,7 @@ local function build_url(route, querystring_params)
 end
 
 ---@param query string
----@return Plugin[] | nil
+---@return PluginResult[] | nil
 M.search = function(query)
   local res = curl.get({
     url = build_url('/search', {

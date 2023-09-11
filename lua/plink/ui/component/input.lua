@@ -2,29 +2,27 @@ local Text = require('nui.text')
 local defaults = require('nui.utils').defaults
 local is_type = require('nui.utils').is_type
 local event = require('nui.utils.autocmd').event
-local BasePopup = reload('plink.ui.component.popup')
-local Spinner = reload('plink.ui.component.spinner')
-local Config = reload('plink.config')
+local BasePopup = require('plink.ui.component.popup')
+local Spinner = require('plink.ui.component.spinner')
+local Config = require('plink.config')
 
 vim.cmd([[sign define plink-search text= texthl=Pmenu]])
 
-local function patch_cursor_position(target_cursor, force)
-  local cursor = vim.api.nvim_win_get_cursor(0)
-  if target_cursor[2] == cursor[2] and force then
-    -- didn't exit insert mode yet, but it's gonna
-    vim.api.nvim_win_set_cursor(0, { cursor[1], cursor[2] + 1 })
-  elseif target_cursor[2] - 1 == cursor[2] then
-    -- already exited insert mode
-    vim.api.nvim_win_set_cursor(0, { cursor[1], cursor[2] + 1 })
-  end
+local function del_extmark(bufnr, nsid, extid)
+  return pcall(vim.api.nvim_buf_del_extmark, bufnr, nsid, extid)
+end
+
+local function set_extmark(bufnr, nsid, line, col, opts)
+  return pcall(vim.api.nvim_buf_set_extmark, bufnr, nsid, line, col, opts)
 end
 
 local SearchInput = BasePopup:extend('SearchInput')
 
-function SearchInput:init(options, layout_opts)
-  -- vim.fn.sign_define('multiprompt_sign', { text = ' ', texthl = 'LineNr', numhl = 'LineNr' })
-  -- vim.fn.sign_define('singleprompt_sign', { text = ' ', texthl = 'LineNr', numhl = 'LineNr' })
-
+---@class SearchInput: BasePopup
+---@field start_spinner fun(): nil
+---@field stop_spinner fun(): nil
+function SearchInput:init(options)
+  local layout_opts = options.layout
   if not is_type('boolean', options.enter) then
     options.enter = true
   end
@@ -37,70 +35,42 @@ function SearchInput:init(options, layout_opts)
   options.win_options = defaults(options.win_options, {})
   options.size.height = defaults(options.size.height, 1)
 
+  self.spinner = Spinner:new(vim.schedule_wrap(function(state)
+    self:display_input_suffix(state)
+  end), { animation_type_name = 'points' })
+
   SearchInput.super.init(self, options, layout_opts)
 
   self._.default_value = defaults(options.default_value, '')
   self._.prompt = Text(defaults(options.prompt, ''))
   self._.disable_cursor_position_patch = defaults(options.disable_cursor_position_patch, false)
-
-  self.spinner = Spinner:new(vim.schedule_wrap(function(state)
-    self:display_input_suffix(state)
-  end), { animation_type_name = 'points' })
+  self._.on_select = options.on_select
 
   local props = {}
 
   self.input_props = props
 
-  props.on_submit = function(value)
-    local target_cursor = vim.api.nvim_win_get_cursor(self._.position.win)
 
-    local prompt_normal_mode = vim.fn.mode() == 'n'
+  -- props.on_close = function()
+  --   self:unmount()
 
-    vim.schedule(function()
-      if prompt_normal_mode then
-        -- NOTE: on prompt-buffer normal mode <CR> causes neovim to enter insert mode.
-        --  ref: https://github.com/neovim/neovim/blob/d8f5f4d09078/src/nvim/normal.c#L5327-L5333
-        vim.api.nvim_command('stopinsert')
-      end
+  --   if vim.fn.mode() == 'i' then
+  --     self:stopinsert(options.on_close)
+  --   elseif options.on_close then
+  --     vim.schedule(function()
+  --       options.on_close()
+  --     end)
+  --   end
+  -- end
 
-      if not self._.disable_cursor_position_patch then
-        patch_cursor_position(target_cursor, prompt_normal_mode)
-      end
-
-      if options.on_submit then
-        options.on_submit(value)
-      end
-    end)
-  end
-
-  props.on_close = function()
-    local target_cursor = vim.api.nvim_win_get_cursor(self._.position.win)
-
-    self:unmount()
-
-    vim.schedule(function()
-      if vim.fn.mode() == 'i' then
-        vim.api.nvim_command('stopinsert')
-      end
-
-      if not self._.disable_cursor_position_patch then
-        patch_cursor_position(target_cursor)
-      end
-
-      if options.on_close then
-        options.on_close()
-      end
-    end)
-  end
-
-  if options.on_change then
-    local bufnr = self.bufnr
-    props.on_change = function()
-      local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-      -- vim.fn.sign_place(0, 'my_group', 'singleprompt_sign', bufnr, { lnum = 1, priority = 10 })
-      options.on_change(table.concat(lines, '\n'))
-    end
-  end
+  -- if options.on_change then
+  --   local bufnr = self.bufnr
+  --   props.on_change = function()
+  --     local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+  --     -- vim.fn.sign_place(0, 'my_group', 'singleprompt_sign', bufnr, { lnum = 1, priority = 10 })
+  --     options.on_change(table.concat(lines, '\n'))
+  --   end
+  -- end
 end
 
 function SearchInput:set_lines(start_idx, end_idx, strict_indexing, lines)
@@ -111,15 +81,32 @@ function SearchInput:set_lines(start_idx, end_idx, strict_indexing, lines)
   end
 end
 
+function SearchInput:on_change(value)
+  vim.fn.sign_place(0, 'my_group', 'singleprompt_sign', self.bufnr, {
+    lnum = 1,
+    priority = 10,
+  })
+  SearchInput.super.on_change(self, value)
+end
+
+function SearchInput:on_submit(value)
+  self:stopinsert()
+  SearchInput.super.on_submit(self, value)
+end
+
+function SearchInput:on_close()
+  self:stopinsert()
+  SearchInput.super.on_close(self)
+end
+
 function SearchInput:mount()
   local props = self.input_props
 
   SearchInput.super.mount(self)
 
-  if props.on_change then
-    vim.api.nvim_buf_attach(self.bufnr, false, {
-      on_lines = props.on_change,
-    })
+  local cmp_ok, cmp = pcall(require, 'cmp')
+  if cmp_ok then
+    pcall(cmp.setup.buffer, { enabled = false })
   end
 
   if #self._.default_value then
@@ -128,46 +115,79 @@ function SearchInput:mount()
     end, { once = true })
   end
 
-  self:map('i', '<cr>', function()
-    local lines = vim.api.nvim_buf_get_lines(self.bufnr, 0, -1, false)
-    local value = table.concat(lines, '\n')
-    props.on_submit(value)
+  self:on(event.CursorMoved, function()
+    self:on_move_cursor()
+  end)
+
+  self:map('n', 'k', function()
+    self:on_move_cursor('up')
+  end, { noremap = true })
+
+  self:map('n', 'j', function()
+    self:on_move_cursor('down')
   end, { noremap = true })
 
   self:map('n', '<cr>', function()
-    local lines = vim.api.nvim_buf_get_lines(self.bufnr, 0, -1, false)
-    local value = table.concat(lines, '\n')
-    props.on_submit(value)
+    self:on_select()
+  end, { noremap = true })
+
+  self:map('i', '<cr>', function()
+    -- noop
   end, { noremap = true })
 
   self:toggle_placeholder()
+
   vim.api.nvim_buf_attach(self.bufnr, false, {
     on_lines = function()
       self:toggle_placeholder()
-      if not self.loading and props.on_change then
-        local lines = vim.api.nvim_buf_get_lines(self.bufnr, 0, -1, false)
-        local text = table.concat(lines, '\n')
-        props.on_change(text)
-      end
+      local lines = vim.api.nvim_buf_get_lines(self.bufnr, 0, -1, false)
+      self:on_change(table.concat(lines, '\n'))
     end,
   })
 
   vim.api.nvim_command('startinsert!')
-  vim.fn.sign_place(0, 'my_group', 'plink-search', self.bufnr, { lnum = 1, priority = 10 })
+  vim.fn.sign_place(0, 'plink-search', 'plink-search', self.bufnr, { lnum = 1, priority = 100 })
+end
+
+function SearchInput:set_extmark(opts)
+  if self.extmark_id then
+    del_extmark(self.bufnr, Config.namespace_id, self.extmark_id)
+  end
+
+  if opts then
+    local ok, extmark_id = set_extmark(self.bufnr, Config.namespace_id, 0, -1, opts)
+    self.extmark_id = ok and extmark_id or nil
+  end
+end
+
+---@param direction 'up' | 'down' | nil
+function SearchInput:on_move_cursor(direction)
+  local opts = nil
+  if self.output then
+    opts = {
+      virt_text = {
+        { '' .. self.output.active_line .. ' / ' .. #self.output.lines, 'MsgArea' },
+      },
+      virt_text_pos = 'right_align',
+    }
+  end
+  self:set_extmark(opts)
+
+  SearchInput.super.on_move_cursor(self, direction)
 end
 
 function SearchInput:toggle_placeholder()
-
-  require('illuminate').pause_buf()
-  local bufnr = self.bufnr
-  local ns_id = self.ns_id
-  local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-  local text = table.concat(lines, '\n')
-  if self.extmark then
-    vim.api.nvim_buf_del_extmark(bufnr, ns_id, self.extmark)
+  local has_illuminate, illuminate = pcall(require, 'illuminate')
+  if has_illuminate then
+    illuminate.pause_buf()
   end
+
+  local lines = vim.api.nvim_buf_get_lines(self.bufnr, 0, -1, false)
+  local text = table.concat(lines, '\n')
+
+  local opts = nil
   if #text == 0 then
-    self.extmark = vim.api.nvim_buf_set_extmark(bufnr, ns_id, 0, -1, {
+    opts = {
       virt_text = {
         {
           'Search phrase...',
@@ -175,8 +195,10 @@ function SearchInput:toggle_placeholder()
         },
       },
       virt_text_pos = 'overlay',
-    })
+    }
   end
+
+  self:set_extmark(opts)
 end
 
 function SearchInput:start_spinner()
@@ -194,32 +216,20 @@ function SearchInput:stop_spinner()
   end)
 end
 
-local function nvim_buf_del_extmark(bufnr, nsid, extid)
-  return pcall(vim.api.nvim_buf_del_extmark, bufnr, nsid, extid)
-end
-
-local function nvim_buf_set_extmark(bufnr, nsid, line, col, opts)
-  return pcall(vim.api.nvim_buf_set_extmark, bufnr, nsid, line, col, opts)
-end
-
 function SearchInput:display_input_suffix(suffix)
-  if self.extmark_id then
-    nvim_buf_del_extmark(self.bufnr, Config.namespace_id, self.extmark_id)
-  end
-
+  local opts = nil
   if suffix then
-    local ok, extmark_id = nvim_buf_set_extmark(self.bufnr, Config.namespace_id, 0, -1, {
+    opts = {
       virt_text = {
-        { "", "PlinkLoadingPillEdge" },
+        { "",        "PlinkLoadingPillEdge" },
         { "" .. suffix, "PlinkLoadingPillCenter" },
-        { "", "PlinkLoadingPillEdge" },
-        { " ", "" },
+        { "",        "PlinkLoadingPillEdge" },
+        { " ",          "" },
       },
       virt_text_pos = "right_align",
-    })
-
-    self.extmark_id = ok and extmark_id or nil
+    }
   end
+  self:set_extmark(opts)
 end
 
 return SearchInput

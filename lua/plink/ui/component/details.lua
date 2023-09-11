@@ -7,6 +7,7 @@ local Text = require('nui.text')
 local BasePopup = require('plink.ui.component.popup')
 local Config = require('plink.config')
 local u = require('plink.util')
+local icons = require('plink.ui.icons')
 
 local Details = BasePopup:extend('Details')
 
@@ -46,21 +47,23 @@ local function part_text_to_width(text, width)
   return lines
 end
 
-function Details:init(options, layout_opts)
-  options = defaults(options, Config.search_details)
-  options.enter = false
-  options.focusable = false
+function Details:init(opts)
+  local layout_opts = opts.layout
 
-  options.buf_options = vim.tbl_deep_extend('keep', {
+  opts = defaults(opts, Config.search_details)
+  opts.enter = false
+  opts.focusable = false
+
+  opts.buf_options = vim.tbl_deep_extend('keep', {
     modifiable = true,
     readonly = false,
-  }, options.buf_options or {})
+  }, opts.buf_options or {})
 
-  options.win_options = vim.tbl_deep_extend('keep', {
+  opts.win_options = vim.tbl_deep_extend('keep', {
     cursorline = false,
-  }, options.win_options or {})
+  }, opts.win_options or {})
 
-  Details.super.init(self, options, layout_opts)
+  Details.super.init(self, opts, layout_opts)
 
   self:on(event.BufEnter, function()
     self:lock_buf()
@@ -70,12 +73,6 @@ end
 function Details:set_lines(lines)
   self:unlock_buf()
   vim.api.nvim_buf_set_lines(self.bufnr, 0, -1, false, { '' })
-  lines = _.map(function(line)
-    if type(line) == 'string' then
-      line = Line({ Text(line) })
-    end
-    return line
-  end, lines)
 
   for i, line in ipairs(lines) do
     line:render(self.bufnr, self.ns_id, i)
@@ -83,17 +80,15 @@ function Details:set_lines(lines)
   self:lock_buf()
 end
 
----@param plugin Plugin
+---@param plugin PluginResult
 function Details:set_plugin(plugin)
-  local url_icon = ' '
-  if plugin.url:match('github.com') then
-    url_icon = ' '
-  end
+  local url_icon = plugin.url:match('github.com') and icons.github or icons.url
+
   local lines = {
-    Line({ Text(' ' .. plugin.name, 'PlinkTitle') }),
-    Line({ Text(url_icon, 'PlinkTitle'), Text(plugin.url, 'PlinkTitleLink') }),
+    Line({ Text(icons.package_fancy .. ' ' .. plugin.name, 'PlinkTitle') }),
+    Line({ Text(url_icon .. ' ', 'PlinkTitle'), Text(plugin.url, 'PlinkTitleLink') }),
     Line({ Text('') }),
-    Line({ Text(' Description', 'PlinkTitle') }),
+    Line({ Text(icons.sparkles_fancy .. ' Description', 'PlinkTitle') }),
   }
 
   local winid = u.buf_get_win(self.bufnr)
@@ -103,11 +98,21 @@ function Details:set_plugin(plugin)
   end
 
   table.insert(lines, Line({ Text('') }))
-  table.insert(lines, Line({ Text(' GitHub Stargazers', 'PlinkTitle'), Text(' ' .. plugin.stars) }))
+
+  table.insert(lines, Line {
+    Text(icons.star_fancy .. ' Stargazers', 'PlinkTitle'),
+    Text(' ' .. plugin.stars),
+  })
   table.insert(lines, Line({ Text('') }))
-  table.insert(lines, Line({ Text('Tags', 'PlinkTitle') }))
+  table.insert(lines, Line({ Text(icons.lightning_fancy .. ' Tags', 'PlinkTitle') }))
   for _, tag in ipairs(plugin.tags) do
-    table.insert(lines, Line({ Text('- ' .. tag) }))
+    table.insert(lines, Line { Text('- ' .. tag) })
+  end
+
+  for i = 1, #lines do
+    if lines[i] == nil then
+      lines[i] = Line({ Text('') })
+    end
   end
 
   self:set_lines(lines)

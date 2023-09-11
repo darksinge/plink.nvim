@@ -1,28 +1,18 @@
 local Layout = require('nui.layout')
 local defaults = require('nui.utils').defaults
-local event = require('nui.utils.autocmd').event
-local search = reload('plink.search')
-local Config = reload('plink.config')
-local Input = reload('plink.ui.component.input')
-local Output = reload('plink.ui.component.output')
-local Details = reload('plink.ui.component.details')
-local BasePopup = reload('plink.ui.component.popup')
-local util = reload('plink.util')
+local search = require('plink.search')
+local Config = require('plink.config')
+local Input = require('plink.ui.component.input')
+local SearchOutput = require('plink.ui.component.output')
+local Details = require('plink.ui.component.details')
+local util = require('plink.util')
 local _ = require('neodash')
-
--- local icons = lvim.icons.ui
 
 local SearchLayout = Layout:extend('SearchLayout')
 
 ---@param size number | string | { width: number | string }
 local function calc_width(size)
-  local width
-
-  if type(size) == 'table' then
-    width = size.width
-  else
-    width = size
-  end
+  local width = type(size) == 'table' and size.width or size
 
   if type(width) == 'string' then
     local pct = width:match('^(%d+)%%$')
@@ -37,71 +27,81 @@ local function calc_width(size)
   return width
 end
 
-function SearchLayout:init(options)
-  local this = self
-  self.loading = false
+function SearchLayout:init(opts)
+  opts = opts or {}
+
   self.previous_winid = vim.api.nvim_get_current_win()
-  options = options or {}
 
-  local input_opts = defaults(options.search_input, Config.options.search_input)
-  input_opts.on_submit = function(value)
-    vim.api.nvim_command('stopinsert')
-    self.input:start_spinner()
-    search.search_async(value, function(plugins)
-      self.plugins = plugins
+  local input_opts = defaults(opts.search_input, Config.options.search_input)
 
-      if not plugins then
-        self.input:stop_spinner()
-        return
-      end
-
-      local lines = _.map(function(plugin)
-        return '  ' .. plugin.name
-      end, plugins)
-
-      self.output:set_lines(lines)
-      self.details:set_plugin(plugins[1])
-      self.input:stop_spinner()
-      this:set_active(self.output)
-
-      this:update()
-    end)
-  end
-
-  local search_details = defaults(options.search_details, Config.options.search_details)
+  local search_details = defaults(opts.search_details, Config.options.search_details)
   local search_details_layout_opts = search_details.layout
-  search_details.layout = nil
   self.details = Details(search_details, search_details_layout_opts)
-  self.details.active = false
-  self.details.hidden = false
 
-  local input_layout_opts = input_opts.layout
-  input_opts.layout = nil
-  self.input = Input(input_opts, input_layout_opts)
-  self.input.active = true
-  self.input.hidden = false
+  ---@type SearchInput
+  self.input = Input(input_opts)
+  self.input:register_handler('on_focus', function()
+    local linenr = self.output.active_line
+    ---@type Plugin
+    local plugin = self.plugins[linenr]
+    if plugin and plugin.name and Config.options.install_behavior.on_install then
+      self:unmount()
+      Config.options.install_behavior.on_install(plugin.name)
+    end
+  end)
 
-  local output_opts = defaults(options.search_output, Config.options.search_output)
-  local output_layout_opts = output_opts.layout
-  output_opts.layout = nil
-  output_opts.on_move_cursor = function(row)
-    if self.plugins and row then
-      local plugin = self.plugins[row]
+  self.input:register_handler('on_move_cursor', function(direction)
+    local lnr = self.output:move_selected(direction)
+    local plugin = lnr and self.plugins and self.plugins[lnr] or nil
+    if plugin then
+      self.details:set_plugin(plugin)
+    end
+  end)
+
+  self.input:register_handler('on_change', function(value)
+    if value and #value >= 3 then
+      self.input:start_spinner()
+      search.search_async(value, function(plugins)
+        self.plugins = plugins
+
+        if not plugins then
+          self.input:stop_spinner()
+          return
+        end
+
+        self.output:display_search_results(plugins)
+        self.details:set_plugin(plugins[1])
+        self.input:stop_spinner()
+        self.input.output = self.output
+        self.input:on_move_cursor()
+
+        self:update()
+      end)
+    end
+  end)
+
+  self.input:register_handler('on_select', function()
+    local linenr = self.output.active_line
+    ---@type Plugin
+    local plugin = self.plugins[linenr]
+    if plugin and plugin.name and Config.options.install_behavior.on_install then
+      self:unmount()
+      Config.options.install_behavior.on_install(plugin.name)
+    end
+  end)
+  local output_opts = defaults(opts.search_output, Config.options.search_output)
+
+  self.output = SearchOutput(output_opts)
+  self.output:register_handler('on_move_cursor', function()
+    if self.plugins then
+      local plugin = self.plugins[self.output.active_line]
       if plugin then
         self.details:set_plugin(plugin)
       end
     end
-  end
+  end)
 
-  output_opts.on_select = function(_)
-    self:set_active(self.details)
-  end
-
-  self.output = Output(output_opts, output_layout_opts)
-  self.output.active = false
-  self.output.hidden = false
-
-  self.layout_opts = defaults(options.search_layout, Config.options.search_layout)
+  self.layout_opts = defaults(opts.search_layout, Config.options.search_layout)
   if self.layout_opts.size then
     local size = self.layout_opts.size
     local width = calc_width(size)
@@ -117,8 +117,6 @@ function SearchLayout:init(options)
   end
 
   local inner_layout_opts = self.layout_opts.inner_layout
-  self.layout_opts.inner_layout = nil
-
   self.inner_layout = Layout.Box({
     self.details.layout,
     self.input.layout,
@@ -142,51 +140,28 @@ function SearchLayout:set_active(component)
   component:focus()
 end
 
-function SearchLayout:update()
-  local layouts = {}
-  if not self.input.hidden then
-    table.insert(layouts, self.input.layout)
-  end
-
-  if not self.output.hidden then
-    table.insert(layouts, self.output.layout)
-  end
-
-  assert(not (self.input.active == true and self.output.active == true), 'only one component can be active at a time')
-
-  SearchLayout.super.update(
-    self,
-    self.layout_opts,
-    self.inner_layout
-  )
-
-  for _, component in ipairs({ self.input, self.output }) do
-    if component.hidden then
-      pcall(component.hide, component)
-    elseif component.active then
-      pcall(component.focus, component)
-    end
-  end
-end
-
 function SearchLayout:mount()
   SearchLayout.super.mount(self)
 
+  local map_opts = { noremap = true, silent = true }
   self.details:map('n', '<C-j>', function()
     self.input:focus()
-  end, { noremap = true, silent = true })
+  end, map_opts)
 
   self.input:map('n', '<C-k>', function()
     self.details:focus()
-  end, { noremap = true, silent = true })
+  end, map_opts)
 
-  self.input:map('n', '<C-j>', function()
-    self.output:focus()
-  end, { noremap = true, silent = true })
+  self.input:map('n', 'q', function()
+    self:unmount()
+  end, map_opts)
 
-  self.output:map('n', '<C-k>', function()
-    self.input:focus()
-  end, { noremap = true, silent = true })
+  self.input:map('n', '<esc>', function()
+    self:unmount()
+  end, map_opts)
 end
+
+-- local layout = SearchLayout()
+-- layout:mount()
 
 return SearchLayout
