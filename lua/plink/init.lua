@@ -1,4 +1,4 @@
-local Config = reload('plink.config')
+local Config = require('plink.config')
 
 local M = {}
 

@@ -2,9 +2,9 @@ local Text = require('nui.text')
 local defaults = require('nui.utils').defaults
 local is_type = require('nui.utils').is_type
 local event = require('nui.utils.autocmd').event
-local BasePopup = reload('plink.ui.component.popup')
-local Spinner = reload('plink.ui.component.spinner')
-local Config = reload('plink.config')
+local BasePopup = require('plink.ui.component.popup')
+local Spinner = require('plink.ui.component.spinner')
+local Config = require('plink.config')
 
 vim.cmd([[sign define plink-search text= texthl=Pmenu]])
 

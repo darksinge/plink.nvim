@@ -1,4 +1,4 @@
-local loaders = reload('plink.plugin-loaders')
+local loaders = require('plink.plugin-loaders')
 local Path = require('plenary.path')
 
 local M = {}

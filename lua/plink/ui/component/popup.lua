@@ -4,8 +4,8 @@ local Popup = require('nui.popup')
 local defaults = require('nui.utils').defaults
 local Config = require('plink.config')
 local Layout = require('nui.layout')
-local u = reload('plink.util')
-local nvim = reload('plink.nvim-api')
+local u = require('plink.util')
+local nvim = require('plink.nvim-api')
 
 ---@alias PopupEvent 'on_select'|'on_move_cursor'|'on_focus'|'on_change'|'on_close'
 

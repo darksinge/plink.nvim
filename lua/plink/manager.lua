@@ -1,7 +1,7 @@
 local Path = require('plenary.path')
 local Object = require('nui.object')
 
-local loaders = reload('plink.plugin-loaders')
+local loaders = require('plink.plugin-loaders')
 
 ---@alias PluginManager 'lazy'|'packer'|'plug'
 

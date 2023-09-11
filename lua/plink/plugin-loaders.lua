@@ -1,4 +1,4 @@
-local e = reload('plink.errors')
+local e = require('plink.errors')
 
 local M = {}
 

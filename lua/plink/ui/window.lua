@@ -1,5 +1,5 @@
-local nvim = reload('plink.nvim-api')
-local SearchLayout = reload('plink.ui.component.search_layout')
+local nvim = require('plink.nvim-api')
+local SearchLayout = require('plink.ui.component.search_layout')
 local Config = require('plink.config')
 
 local M = {}

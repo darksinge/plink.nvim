@@ -1,6 +1,6 @@
-local SearchLayout = reload('plink.ui.component.search_layout')
-local Config = reload('plink.config')
-local Manager = reload('plink.manager')
+local SearchLayout = require('plink.ui.component.search_layout')
+local Config = require('plink.config')
+local Manager = require('plink.manager')
 
 local M = {}
 

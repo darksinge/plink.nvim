@@ -1,11 +1,11 @@
 local Layout = require('nui.layout')
 local defaults = require('nui.utils').defaults
-local search = reload('plink.search')
-local Config = reload('plink.config')
-local Input = reload('plink.ui.component.input')
-local SearchOutput = reload('plink.ui.component.output')
-local Details = reload('plink.ui.component.details')
-local util = reload('plink.util')
+local search = require('plink.search')
+local Config = require('plink.config')
+local Input = require('plink.ui.component.input')
+local SearchOutput = require('plink.ui.component.output')
+local Details = require('plink.ui.component.details')
+local util = require('plink.util')
 local _ = require('neodash')
 
 local SearchLayout = Layout:extend('SearchLayout')

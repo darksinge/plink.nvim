@@ -3,12 +3,12 @@ local __ = require("nui.utils")._
 local event = require('nui.utils.autocmd').event
 local defaults = require('nui.utils').defaults
 -- local Layout = require('nui.layout')
-local Line = reload('plink.ui.component.line')
-local Text = reload('plink.ui.component.text')
-local BasePopup = reload('plink.ui.component.popup')
-local Config = reload('plink.config')
-local u = reload('plink.util')
-local icons = reload('plink.ui.icons')
+local Line = require('plink.ui.component.line')
+local Text = require('plink.ui.component.text')
+local BasePopup = require('plink.ui.component.popup')
+local Config = require('plink.config')
+local u = require('plink.util')
+local icons = require('plink.ui.icons')
 
 ---@alias MoveDirection 'down' | 'up'
 
