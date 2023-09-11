@@ -1,7 +1,7 @@
 local async = require('plenary.async')
 local api = require('plink.api')
 local util = require('plink.util')
-local log = reload 'plink.log'
+local log = require('plink.log')
 
 local M = {}
 
