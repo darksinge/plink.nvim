@@ -39,8 +39,4 @@ M.search = function(query)
   )
 end
 
-M.fake_search = function(_, handler)
-  api.fake_search(_, handler)
-end
-
 return M
