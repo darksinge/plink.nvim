@@ -15,7 +15,7 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim)
 -- init.lua
 {
     'darksinge/plink.nvim',
-    commit = '4e62e47',
+    commit = 'f8148f9',
     dependencies = {
       'nvim-lua/plenary.nvim',
       'darksinge/neodash.nvim',
@@ -29,7 +29,8 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim)
 This plugin has a backend component ([darksinge/plink-nvim-site](https://github.com/darksinge/plink-nvim-site)).
 
 ### Warning
-I'm only adding these instructions because I'm just about to release a video on my 
+
+I'm only adding these instructions because I'm just about to release a video on my
 [YouTube channel](https://www.youtube.com/@ifcodingwerenatural), **but this
 is likely to break without warning and I'm only human and will probably forget
 to update these instructions in a timely manner and this is definitely, 100%
