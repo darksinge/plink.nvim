@@ -53,4 +53,4 @@ you're simply curious and want to play around. **You _will_ encounter bugs**.
   - set up auto install for popular dists like lunarvim, lazyvim, nvchad,
     astrovim, kickstarter.nvim, etc.
 - allow sorting results by author, popularity, tags, etc.
-- make UI look as pretty as humanely possible
+- make UI look as pretty as humanly possible
